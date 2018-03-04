@@ -164,7 +164,7 @@ public abstract class SQLiteOpenHelper {
 
             if (db != null) {
                 // Ok
-            } else if (mName == null) {
+            } else {
                 db = SQLiteDatabase.openOrCreateDatabase(mContext.getDatabasePath(mName), password, mFactory, null, mErrorHandler);
             }
 
@@ -197,6 +197,7 @@ public abstract class SQLiteOpenHelper {
     //todo add this:
     // PRAGMA foreign_keys = ON;
     // PRAGMA journal_mode=WAL;
+
     /**
      * Called when the database connection is being configured, to enable features
      * such as write-ahead logging or foreign key support.

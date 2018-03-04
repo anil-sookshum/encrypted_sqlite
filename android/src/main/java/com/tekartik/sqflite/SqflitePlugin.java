@@ -119,6 +119,7 @@ public class SqflitePlugin implements MethodCallHandler {
     // Plugin registration.
     //
     public static void registerWith(Registrar registrar) {
+        SQLiteDatabase.loadLibs(registrar.context());
         final MethodChannel channel = new MethodChannel(registrar.messenger(), "com.tekartik.sqflite");
         channel.setMethodCallHandler(new SqflitePlugin(registrar.activity().getApplicationContext()));
     }
