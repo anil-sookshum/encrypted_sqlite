@@ -5,23 +5,28 @@ import 'package:sqflite/src/batch.dart';
 import 'package:sqflite/src/constant.dart';
 import 'package:sqflite/src/exception.dart';
 import 'package:sqflite/src/sqflite_impl.dart';
+import 'package:sqflite/src/sqflite_impl.dart' as impl;
 import 'package:sqflite/src/sql_builder.dart';
 import 'package:sqflite/src/transaction.dart';
 import 'package:sqflite/src/utils.dart';
 import 'package:synchronized/synchronized.dart';
 
-abstract class SqfliteDatabaseExecutor {
+abstract class SqfliteDatabaseExecutor implements DatabaseExecutor {
   SqfliteTransaction get txn;
 
   SqfliteDatabase get db;
 
   /// for sql without return values
+  @override
   Future execute(String sql, [List arguments]) => db.txnExecute(txn, sql, arguments);
 
   /// for INSERT sql query
   /// returns the last inserted record id
+  @override
   Future<int> rawInsert(String sql, [List arguments]) => db.txnRawInsert(txn, sql, arguments);
 
+  /// INSERT helper
+  @override
   Future<int> insert(String table, Map<String, dynamic> values, {String nullColumnHack, ConflictAlgorithm conflictAlgorithm}) {
     SqlBuilder builder =
         new SqlBuilder.insert(table, values, nullColumnHack: nullColumnHack, conflictAlgorithm: conflictAlgorithm);
@@ -51,8 +56,10 @@ abstract class SqfliteDatabaseExecutor {
   ///            default sort order, which may be unordered.
   /// @param limit Limits the number of rows returned by the query,
   /// @param offset starting index,
-
+  ///
   /// @return the items found
+  ///
+  @override
   Future<List<Map<String, dynamic>>> query(String table,
       {bool distinct,
       List<String> columns,
@@ -77,10 +84,12 @@ abstract class SqfliteDatabaseExecutor {
   }
 
   /// for SELECT sql query
+  @override
   Future<List<Map<String, dynamic>>> rawQuery(String sql, [List arguments]) => db.txnRawQuery(txn, sql, arguments);
 
   /// for UPDATE sql query
   /// return the number of changes made
+  @override
   Future<int> rawUpdate(String sql, [List arguments]) => db.txnRawUpdate(txn, sql, arguments);
 
   /// Convenience method for updating rows in the database.
@@ -93,6 +102,7 @@ abstract class SqfliteDatabaseExecutor {
   ///            will be replaced by the values from [whereArgs]
   /// optional [conflictAlgorithm] for update conflict resolver
   /// return the number of rows affected
+  @override
   Future<int> update(String table, Map<String, dynamic> values,
       {String where, List whereArgs, ConflictAlgorithm conflictAlgorithm}) {
     SqlBuilder builder =
@@ -102,6 +112,7 @@ abstract class SqfliteDatabaseExecutor {
 
   /// for DELETE sql query
   /// return the number of changes made
+  @override
   Future<int> rawDelete(String sql, [List arguments]) => rawUpdate(sql, arguments);
 
   /// Convenience method for deleting rows in the database.
@@ -115,42 +126,26 @@ abstract class SqfliteDatabaseExecutor {
   /// return the number of rows affected if a whereClause is passed in, 0
   ///         otherwise. To remove all rows and get a count pass "1" as the
   ///         whereClause.
+  @override
   Future<int> delete(String table, {String where, List whereArgs}) {
     SqlBuilder builder = new SqlBuilder.delete(table, where: where, whereArgs: whereArgs);
     return rawDelete(builder.sql, builder.arguments);
   }
-
-  ///
-  /// Get the database inner version
-  ///
-  Future<int> getVersion() async {
-    List<Map<String, dynamic>> rows = await rawQuery("PRAGMA user_version;");
-    return Sqflite.firstIntValue(rows);
-  }
-
-  ///
-  /// Set the database inner version
-  /// Used internally for open helpers and automatic versioning
-  ///
-  Future setVersion(int version) async {
-    await execute("PRAGMA user_version = $version;");
-  }
 }
 
 class SqfliteDatabase extends SqfliteDatabaseExecutor implements Database {
-  SqfliteDatabase(this._path, this.id) {
-    // For now keep a lock for all access
-    if (supportsConcurrency) {
-      _writeLock = new SynchronizedLock();
-    } else {
-      _writeLock = _lock;
-    }
-  }
+  SqfliteDatabase(this._path, this.id);
 
-  var _lock = new SynchronizedLock();
-  var _writeLock;
+  // will be removed once writeSynchronized and synchronized are removed
 
-  SynchronizedLock get transactionLock => _lock;
+  SynchronizedLock get synchronizedLock => rawSynchronizedlock ??= new SynchronizedLock();
+
+  SynchronizedLock get writeSynchronizedLock =>
+      rawWriteSynchronizedLock ??= (supportsConcurrency ? new SynchronizedLock() : synchronizedLock);
+  SynchronizedLock rawSynchronizedlock;
+  SynchronizedLock rawWriteSynchronizedLock;
+
+  SynchronizedLock get transactionLock => rawSynchronizedlock;
 
   @override
   SqfliteDatabase get db => this;
@@ -171,7 +166,7 @@ class SqfliteDatabase extends SqfliteDatabaseExecutor implements Database {
   SqfliteTransaction get txn => openTransaction;
 
   // non-reentrant lock
-  var _rawLock = new Lock();
+  final rawLock = new Lock();
 
   // Its internal id
   int id;
@@ -188,6 +183,8 @@ class SqfliteDatabase extends SqfliteDatabaseExecutor implements Database {
     return new SqfliteBatch(this);
   }
 
+  Future<T> invokeMethod<T>(String method, [dynamic arguments]) => impl.invokeMethod(method, arguments);
+
   @override
   Future devInvokeMethod(String method, [arguments]) {
     return invokeMethod(method, (arguments ?? <String, dynamic>{})..addAll(baseDatabaseMethodArguments));
@@ -200,12 +197,32 @@ class SqfliteDatabase extends SqfliteDatabaseExecutor implements Database {
 
   /// synchronized call to the database
   /// not re-entrant
+  /// Ugly compatibility step to not support older synchronized
+  /// mechanism
   Future<T> txnSynchronized<T>(Transaction txn, Future<T> action()) async {
     // If in a transaction, execute right away
-    if ((txn ?? openTransaction) != null) {
+    if (txn != null) {
       return await action();
     } else {
-      T result = await _rawLock.synchronized(action);
+      T result;
+      bool useOldSynchronized = false;
+      // We use the old synchronized lock as soon as it is used
+      // We might have pending queries that would return
+      if (rawSynchronizedlock == null) {
+        result = await rawLock.synchronized(() {
+          if (rawSynchronizedlock != null) {
+            useOldSynchronized = true;
+          } else {
+            return action();
+          }
+        });
+      } else {
+        useOldSynchronized = true;
+      }
+
+      if (useOldSynchronized) {
+        result = await rawSynchronizedlock.synchronized(action);
+      }
       return result;
     }
   }
@@ -215,12 +232,16 @@ class SqfliteDatabase extends SqfliteDatabaseExecutor implements Database {
   Future<T> txnWriteSynchronized<T>(Transaction txn, Future<T> action()) => txnSynchronized(txn, action);
 
   /// for sql without return values
-  Future txnExecute(SqfliteTransaction txn, String sql, List arguments) {
+  Future txnExecute(SqfliteTransaction txn, String sql, [List arguments]) {
     return txnWriteSynchronized(txn, () {
-      return wrapDatabaseException(() {
-        return invokeMethod(
-            methodExecute, <String, dynamic>{paramSql: sql, paramSqlArguments: arguments}..addAll(baseDatabaseMethodArguments));
-      });
+      return invokeExecute(sql, arguments);
+    });
+  }
+
+  Future invokeExecute(String sql, List arguments) {
+    return wrapDatabaseException(() {
+      return invokeMethod(
+          methodExecute, <String, dynamic>{paramSql: sql, paramSqlArguments: arguments}..addAll(baseDatabaseMethodArguments));
     });
   }
 
@@ -259,40 +280,44 @@ class SqfliteDatabase extends SqfliteDatabaseExecutor implements Database {
   Future<SqfliteTransaction> beginTransaction({bool exclusive}) async {
     SqfliteTransaction txn = new SqfliteTransaction(this);
     if (exclusive == true) {
-      await execute("BEGIN EXCLUSIVE;");
+      await txnExecute(txn, "BEGIN EXCLUSIVE");
     } else {
-      await execute("BEGIN IMMEDIATE;");
+      await txnExecute(txn, "BEGIN IMMEDIATE");
     }
     return txn;
   }
 
   Future endTransaction(SqfliteTransaction txn) async {
     if (txn.successful == true) {
-      await execute("COMMIT;");
+      await txnExecute(txn, "COMMIT");
     } else {
-      await execute("ROLLBACK;");
+      await txnExecute(txn, "ROLLBACK");
     }
   }
 
+  Future<T> _runTransaction<T>(Future<T> action(Transaction txn), {bool exclusive}) async {
+    SqfliteTransaction txn;
+    bool successfull;
+    if (transactionRefCount++ == 0) {
+      txn = await beginTransaction(exclusive: exclusive);
+    }
+    T result;
+    try {
+      result = await action(txn);
+      successfull = true;
+    } finally {
+      if (--transactionRefCount == 0) {
+        txn.successful = successfull;
+        await endTransaction(txn);
+      }
+    }
+    return result;
+  }
+
   @override
-  Future<T> transaction<T>(Future<T> action(Transaction), {bool exclusive}) {
+  Future<T> transaction<T>(Future<T> action(Transaction txn), {bool exclusive}) {
     return txnWriteSynchronized<T>(null, () async {
-      SqfliteTransaction txn;
-      bool successful;
-      if (transactionRefCount++ == 0) {
-        txn = await beginTransaction(exclusive: exclusive);
-      }
-      T result;
-      try {
-        result = await action(txn);
-        successful = true;
-      } finally {
-        if (--transactionRefCount == 0) {
-          txn.successful = successful;
-          await endTransaction(txn);
-        }
-      }
-      return result;
+      return _runTransaction(action, exclusive: exclusive);
     });
   }
 
@@ -300,10 +325,17 @@ class SqfliteDatabase extends SqfliteDatabaseExecutor implements Database {
   /// synchronized all write calls to the database
   /// ensure that no other calls outside the inner action will
   /// write the database
+  /// This should be removed once synchronized is removed
   ///
-  Future<T> writeSynchronized<T>(Future<T> action()) async {
-    T result = await _writeLock.synchronized(action);
-    return result;
+  Future<T> writeSynchronized<T>(Future<T> action()) {
+    // this is true once synchronized or inTransaction has been used once
+    // All remaining calls will be done in a zone
+    //return writeSynchronizedLock.synchronized(action);
+
+    // that should be the necessary step, to check if issue arises
+    // especially on first call
+    // but anyway this code will disappear
+    return writeSynchronizedLock.synchronized(action);
   }
 
   ///
@@ -311,22 +343,7 @@ class SqfliteDatabase extends SqfliteDatabaseExecutor implements Database {
   ///
   Future<T> inTransaction<T>(Future<T> action(), {bool exclusive}) {
     return writeSynchronized<T>(() async {
-      SqfliteTransaction transaction;
-      bool successful;
-      if (transactionRefCount++ == 0) {
-        transaction = await beginTransaction(exclusive: exclusive);
-      }
-      T result;
-      try {
-        result = await action();
-        successful = true;
-      } finally {
-        if (--transactionRefCount == 0) {
-          transaction.successful = successful;
-          await endTransaction(transaction);
-        }
-      }
-      return result;
+      return _runTransaction((_) => action(), exclusive: exclusive);
     });
   }
 
@@ -340,9 +357,27 @@ class SqfliteDatabase extends SqfliteDatabaseExecutor implements Database {
     if (supportsConcurrency) {
       return await action();
     } else {
-      T result = await _lock.synchronized(action);
+      T result = await synchronizedLock.synchronized(action);
       return result;
     }
+  }
+
+  ///
+  /// Get the database inner version
+  ///
+  @override
+  Future<int> getVersion() async {
+    List<Map<String, dynamic>> rows = await rawQuery("PRAGMA user_version;");
+    return Sqflite.firstIntValue(rows);
+  }
+
+  ///
+  /// Set the database inner version
+  /// Used internally for open helpers and automatic versioning
+  ///
+  @override
+  Future setVersion(int version) async {
+    await execute("PRAGMA user_version = $version;");
   }
 
   /// Close the database. Cannot be access anymore
@@ -377,14 +412,15 @@ Future<Database> openDatabase(String path, String password,
     }
   }
   int databaseId = await _openDatabase(path, password);
+  SqfliteDatabase database;
   try {
     // Special on downgrade delete database
     if (onDowngrade == onDatabaseDowngradeDelete) {
       // Downgrading will delete the database and open it again
       Future _onDatabaseDowngradeDelete(Database _db, int oldVersion, int newVersion) async {
         SqfliteDatabase db = _db as SqfliteDatabase;
-        // This is tricky as we are in a middle of opening a database
-        // need to close what is being done and restart
+        // This is tricky as we are in a middel of opening a database
+        // need to close what is being done and retart
         await db.execute("ROLLBACK;");
         await db.close();
         await deleteDatabase(db.path);
@@ -418,7 +454,10 @@ Future<Database> openDatabase(String path, String password,
       onDowngrade = _onDatabaseDowngradeDelete;
     }
 
-    Database database = new SqfliteDatabase(path, databaseId);
+    database = new SqfliteDatabase(path, databaseId);
+
+    // create dummy open transaction
+    database.openTransaction = new SqfliteTransaction(database);
 
     // first configure it
     if (onConfigure != null) {
@@ -426,7 +465,11 @@ Future<Database> openDatabase(String path, String password,
     }
 
     if (version != null) {
-      await database.inTransaction(() async {
+      await database.transaction((txn) async {
+        // Set the current transaction as the open one
+        // to allow direct database call during open
+        database.openTransaction = txn as SqfliteTransaction;
+
         int oldVersion = await database.getVersion();
         if (oldVersion == null || oldVersion == 0) {
           if (onCreate != null) {
@@ -455,6 +498,9 @@ Future<Database> openDatabase(String path, String password,
   } catch (e) {
     await _closeDatabase(databaseId);
     rethrow;
+  } finally {
+    // clean up open transaction
+    database?.openTransaction = null;
   }
 }
 

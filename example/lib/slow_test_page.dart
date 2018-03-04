@@ -9,9 +9,10 @@ class SlowTestPage extends TestPage {
       String path = await initDeleteDb("slow_txn_100_insert.db");
       Database db = await openDatabase(path, password);
       await db.execute("CREATE TABLE Test (id INTEGER PRIMARY KEY, name TEXT)");
-      await db.inTransaction(() async {
+      await db.transaction((txn) async {
         for (int i = 0; i < 100; i++) {
-          await db.rawInsert("INSERT INTO Test (name) VALUES (?)", ["item $i"]);
+          await txn
+              .rawInsert("INSERT INTO Test (name) VALUES (?)", ["item $i"]);
         }
       });
       await db.close();
@@ -33,9 +34,10 @@ class SlowTestPage extends TestPage {
       await db.execute("CREATE TABLE Test (id INTEGER PRIMARY KEY, name TEXT)");
 
       Stopwatch sw = new Stopwatch()..start();
-      await db.inTransaction(() async {
+      await db.transaction((txn) async {
         for (int i = 0; i < 1000; i++) {
-          await db.rawInsert("INSERT INTO Test (name) VALUES (?)", ["item $i"]);
+          await txn
+              .rawInsert("INSERT INTO Test (name) VALUES (?)", ["item $i"]);
         }
       });
       print("1000 insert ${sw.elapsed}");
@@ -54,9 +56,7 @@ class SlowTestPage extends TestPage {
         await batch
             .rawInsert("INSERT INTO Test (name) VALUES (?)", ["item $i"]);
       }
-      await db.inTransaction(() async {
-        await batch.commit();
-      });
+      await batch.apply();
       print("1000 insert batch ${sw.elapsed}");
       await db.close();
     });
@@ -74,9 +74,8 @@ class SlowTestPage extends TestPage {
         await batch
             .rawInsert("INSERT INTO Test (name) VALUES (?)", ["item $i"]);
       }
-      await db.inTransaction(() async {
-        await batch.commit(noResult: true);
-      });
+      await batch.apply(noResult: true);
+
       print("1000 insert batch no result ${sw.elapsed}");
       await db.close();
     });

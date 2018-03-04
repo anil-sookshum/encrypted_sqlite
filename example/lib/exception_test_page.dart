@@ -2,7 +2,6 @@ import 'dart:convert';
 
 import 'package:sqflite/sqflite.dart';
 import 'package:sqflite/sql.dart';
-
 import 'test_page.dart';
 
 const String password = 'password';
@@ -19,14 +18,15 @@ class ExceptionTestPage extends TestPage {
       // insert then fails to make sure the transaction is cancelled
       bool hasFailed = false;
       try {
-        await db.inTransaction(() async {
-          await db.rawInsert("INSERT INTO Test (name) VALUES (?)", ["item"]);
-          int afterCount = Sqflite.firstIntValue(await db.rawQuery("SELECT COUNT(*) FROM Test"));
+        await db.transaction((txn) async {
+          await txn.rawInsert("INSERT INTO Test (name) VALUES (?)", ["item"]);
+          int afterCount = Sqflite
+              .firstIntValue(await txn.rawQuery("SELECT COUNT(*) FROM Test"));
           expect(afterCount, 1);
 
           hasFailed = true;
           // this failure should cancel the insertion before
-          await db.execute("DUMMY CALL");
+          await txn.execute("DUMMY CALL");
           hasFailed = false;
         });
       } catch (e) {
@@ -35,40 +35,8 @@ class ExceptionTestPage extends TestPage {
       }
       verify(hasFailed);
 
-      int afterCount = Sqflite.firstIntValue(await db.rawQuery("SELECT COUNT(*) FROM Test"));
-      expect(afterCount, 0);
-
-      await db.close();
-    });
-
-    test("Transaction recursive failed", () async {
-      String path = await initDeleteDb("transaction_failed.db");
-      Database db = await openDatabase(path, password);
-
-      await db.execute("CREATE TABLE Test (id INTEGER PRIMARY KEY, name TEXT)");
-
-      // insert then fails to make sure the transaction is cancelled
-      bool hasFailed = false;
-      try {
-        await db.inTransaction(() async {
-          await db.inTransaction(() async {
-            await db.rawInsert("INSERT INTO Test (name) VALUES (?)", ["item"]);
-            int afterCount = Sqflite.firstIntValue(await db.rawQuery("SELECT COUNT(*) FROM Test"));
-            expect(afterCount, 1);
-
-            hasFailed = true;
-            // this failure should cancel the insertion before
-            await db.execute("DUMMY CALL");
-            hasFailed = false;
-          });
-        });
-      } catch (e) {
-        print("native error: $e");
-      }
-
-      verify(hasFailed);
-
-      int afterCount = Sqflite.firstIntValue(await db.rawQuery("SELECT COUNT(*) FROM Test"));
+      int afterCount =
+          Sqflite.firstIntValue(await db.rawQuery("SELECT COUNT(*) FROM Test"));
       expect(afterCount, 0);
 
       await db.close();
@@ -121,7 +89,8 @@ class ExceptionTestPage extends TestPage {
 
     test("Open onDowngrade fail", () async {
       String path = await initDeleteDb("open_on_downgrade_fail.db");
-      Database database = await openDatabase(path, password, version: 2, onCreate: (Database db, int version) async {
+      Database database = await openDatabase(path, password, version: 2,
+          onCreate: (Database db, int version) async {
         await db.execute("CREATE TABLE Test(id INTEGER PRIMARY KEY)");
       });
       await database.close();
@@ -129,21 +98,24 @@ class ExceptionTestPage extends TestPage {
       // currently this is crashing...
       // should fail going back in versions
       try {
-        database = await openDatabase(path, password, version: 1, onDowngrade: onDatabaseVersionChangeError);
+        database = await openDatabase(path, password,
+            version: 1, onDowngrade: onDatabaseVersionChangeError);
         verify(false);
       } catch (e) {
         print(e);
       }
 
       // should work
-      database = await openDatabase(path, password, version: 2, onDowngrade: onDatabaseVersionChangeError);
+      database = await openDatabase(path, password,
+          version: 2, onDowngrade: onDatabaseVersionChangeError);
       print(database);
       await database.close();
     });
 
     test("Access after close", () async {
       String path = await initDeleteDb("access_after_close.db");
-      Database database = await openDatabase(path, password, version: 3, onCreate: (Database db, int version) async {
+      Database database = await openDatabase(path, password, version: 3,
+          onCreate: (Database db, int version) async {
         await db.execute("CREATE TABLE Test(id INTEGER PRIMARY KEY)");
       });
       await database.close();
