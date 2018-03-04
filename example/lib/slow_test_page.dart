@@ -1,11 +1,13 @@
 import 'package:sqflite/sqflite.dart';
 import 'test_page.dart';
 
+const String password = 'password';
+
 class SlowTestPage extends TestPage {
   SlowTestPage() : super("Slow tests") {
     test("Perf 100 insert", () async {
       String path = await initDeleteDb("slow_txn_100_insert.db");
-      Database db = await openDatabase(path);
+      Database db = await openDatabase(path, password);
       await db.execute("CREATE TABLE Test (id INTEGER PRIMARY KEY, name TEXT)");
       await db.inTransaction(() async {
         for (int i = 0; i < 100; i++) {
@@ -17,7 +19,7 @@ class SlowTestPage extends TestPage {
 
     test("Perf 100 insert no txn", () async {
       String path = await initDeleteDb("slow_100_insert.db");
-      Database db = await openDatabase(path);
+      Database db = await openDatabase(path, password);
       await db.execute("CREATE TABLE Test (id INTEGER PRIMARY KEY, name TEXT)");
       for (int i = 0; i < 1000; i++) {
         await db.rawInsert("INSERT INTO Test (name) VALUES (?)", ["item $i"]);
@@ -27,7 +29,7 @@ class SlowTestPage extends TestPage {
 
     test("Perf 1000 insert", () async {
       String path = await initDeleteDb("slow_txn_1000_insert.db");
-      Database db = await openDatabase(path);
+      Database db = await openDatabase(path, password);
       await db.execute("CREATE TABLE Test (id INTEGER PRIMARY KEY, name TEXT)");
 
       Stopwatch sw = new Stopwatch()..start();
@@ -42,7 +44,7 @@ class SlowTestPage extends TestPage {
 
     test("Perf 1000 insert batch", () async {
       String path = await initDeleteDb("slow_txn_1000_insert_batch.db");
-      Database db = await openDatabase(path);
+      Database db = await openDatabase(path, password);
       await db.execute("CREATE TABLE Test (id INTEGER PRIMARY KEY, name TEXT)");
 
       Stopwatch sw = new Stopwatch()..start();
@@ -62,7 +64,7 @@ class SlowTestPage extends TestPage {
     test("Perf 1000 insert batch no result", () async {
       String path =
           await initDeleteDb("slow_txn_1000_insert_batch_no_result.db");
-      Database db = await openDatabase(path);
+      Database db = await openDatabase(path, password);
       await db.execute("CREATE TABLE Test (id INTEGER PRIMARY KEY, name TEXT)");
 
       Stopwatch sw = new Stopwatch()..start();

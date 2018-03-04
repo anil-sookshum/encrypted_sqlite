@@ -6,12 +6,14 @@ final String columnId = "_id";
 final String columnTitle = "title";
 final String columnDone = "done";
 
+const String password = 'password';
+
 class ExpTestPage extends TestPage {
   ExpTestPage() : super("Exp Tests") {
     test("order_by", () async {
       //await Sqflite.setDebugModeOn(true);
       String path = await initDeleteDb("order_by_exp.db");
-      Database db = await openDatabase(path);
+      Database db = await openDatabase(path, password);
 
       String table = "test";
       await db
@@ -43,7 +45,7 @@ class ExpTestPage extends TestPage {
     test("in", () async {
       //await Sqflite.devSetDebugModeOn(true);
       String path = await initDeleteDb("simple_exp.db");
-      Database db = await openDatabase(path);
+      Database db = await openDatabase(path, password);
 
       String table = "test";
       await db
@@ -82,7 +84,7 @@ class ExpTestPage extends TestPage {
     test("Raw escaping", () async {
       //await Sqflite.devSetDebugModeOn(true);
       String path = await initDeleteDb("raw_escaping_fields.db");
-      Database db = await openDatabase(path);
+      Database db = await openDatabase(path, password);
 
       String table = "table";
       await db.execute('CREATE TABLE "$table" ("group" INTEGER)');
@@ -110,7 +112,7 @@ class ExpTestPage extends TestPage {
     test("Escaping fields", () async {
       //await Sqflite.devSetDebugModeOn(true);
       String path = await initDeleteDb("escaping_fields.db");
-      Database db = await openDatabase(path);
+      Database db = await openDatabase(path, password);
 
       String table = "group";
       await db.execute('CREATE TABLE "$table" ("group" TEXT)');
@@ -137,7 +139,7 @@ class ExpTestPage extends TestPage {
     test("Functions", () async {
       //await Sqflite.devSetDebugModeOn(true);
       String path = await initDeleteDb("exp_functions.db");
-      Database db = await openDatabase(path);
+      Database db = await openDatabase(path, password);
 
       String table = "functions";
       await db.execute('CREATE TABLE "$table" (one TEXT, another TEXT)');
@@ -182,7 +184,7 @@ class ExpTestPage extends TestPage {
     test("Alias", () async {
       //await Sqflite.devSetDebugModeOn(true);
       String path = await initDeleteDb("exp_alias.db");
-      Database db = await openDatabase(path);
+      Database db = await openDatabase(path, password);
 
       String table = "alias";
       await db
@@ -201,7 +203,7 @@ class ExpTestPage extends TestPage {
     test("Dart2 query", () async {
       // await Sqflite.devSetDebugModeOn(true);
       String path = await initDeleteDb("exp_alias.db");
-      Database db = await openDatabase(path);
+      Database db = await openDatabase(path, password);
 
       String table = "test";
       await db

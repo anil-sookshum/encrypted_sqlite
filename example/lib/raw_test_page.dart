@@ -9,13 +9,15 @@ import 'package:sqflite_example/src/utils.dart';
 
 import 'test_page.dart';
 
+const String password = 'password';
+
 class SimpleTestPage extends TestPage {
   SimpleTestPage() : super("Raw tests") {
     test("Options (not ios yet)", () async {
       // Sqflite.devSetDebugModeOn(true);
 
       String path = await initDeleteDb("raw_query_format.db");
-      Database db = await openDatabase(path);
+      Database db = await openDatabase(path, password);
 
       Batch batch = db.batch();
 
@@ -74,18 +76,16 @@ class SimpleTestPage extends TestPage {
     });
     test("Transaction", () async {
       String path = await initDeleteDb("simple_transaction.db");
-      Database db = await openDatabase(path);
+      Database db = await openDatabase(path, password);
       await db.execute("CREATE TABLE Test (id INTEGER PRIMARY KEY, name TEXT)");
 
       _test(int i) async {
         await db.inTransaction(() async {
-          int count = Sqflite
-              .firstIntValue(await db.rawQuery("SELECT COUNT(*) FROM Test"));
+          int count = Sqflite.firstIntValue(await db.rawQuery("SELECT COUNT(*) FROM Test"));
           await new Future.delayed(new Duration(milliseconds: 40));
           await db.rawInsert("INSERT INTO Test (name) VALUES (?)", ["item $i"]);
           //print(await db.query("SELECT COUNT(*) FROM Test"));
-          int afterCount = Sqflite
-              .firstIntValue(await db.rawQuery("SELECT COUNT(*) FROM Test"));
+          int afterCount = Sqflite.firstIntValue(await db.rawQuery("SELECT COUNT(*) FROM Test"));
           expect(count + 1, afterCount);
         });
       }
@@ -100,7 +100,7 @@ class SimpleTestPage extends TestPage {
 
     test("Transaction recursive", () async {
       String path = await initDeleteDb("transaction_recursive.db");
-      Database db = await openDatabase(path);
+      Database db = await openDatabase(path, password);
 
       await db.execute("CREATE TABLE Test (id INTEGER PRIMARY KEY, name TEXT)");
 
@@ -112,8 +112,7 @@ class SimpleTestPage extends TestPage {
           await db.rawInsert("INSERT INTO Test (name) VALUES (?)", ["item 2"]);
         });
       });
-      int afterCount =
-          Sqflite.firstIntValue(await db.rawQuery("SELECT COUNT(*) FROM Test"));
+      int afterCount = Sqflite.firstIntValue(await db.rawQuery("SELECT COUNT(*) FROM Test"));
       expect(afterCount, 2);
 
       await db.close();
@@ -122,16 +121,15 @@ class SimpleTestPage extends TestPage {
     test("Transaction open twice", () async {
       //Sqflite.devSetDebugModeOn(true);
       String path = await initDeleteDb("transaction_open_twice.db");
-      Database db = await openDatabase(path);
+      Database db = await openDatabase(path, password);
 
       await db.execute("CREATE TABLE Test (id INTEGER PRIMARY KEY, name TEXT)");
 
-      Database db2 = await openDatabase(path);
+      Database db2 = await openDatabase(path, password);
 
       await db.inTransaction(() async {
         await db.rawInsert("INSERT INTO Test (name) VALUES (?)", ["item"]);
-        int afterCount = Sqflite
-            .firstIntValue(await db.rawQuery("SELECT COUNT(*) FROM Test"));
+        int afterCount = Sqflite.firstIntValue(await db.rawQuery("SELECT COUNT(*) FROM Test"));
         expect(afterCount, 1);
 
         /*
@@ -141,12 +139,10 @@ class SimpleTestPage extends TestPage {
         assert(db2AfterCount == 0);
         */
       });
-      int db2AfterCount = Sqflite
-          .firstIntValue(await db2.rawQuery("SELECT COUNT(*) FROM Test"));
+      int db2AfterCount = Sqflite.firstIntValue(await db2.rawQuery("SELECT COUNT(*) FROM Test"));
       expect(db2AfterCount, 1);
 
-      int afterCount =
-          Sqflite.firstIntValue(await db.rawQuery("SELECT COUNT(*) FROM Test"));
+      int afterCount = Sqflite.firstIntValue(await db.rawQuery("SELECT COUNT(*) FROM Test"));
       expect(afterCount, 1);
 
       await db.close();
@@ -156,7 +152,7 @@ class SimpleTestPage extends TestPage {
     test("Debug mode (log)", () async {
       //await Sqflite.devSetDebugModeOn(false);
       String path = await initDeleteDb("debug_mode.db");
-      Database db = await openDatabase(path);
+      Database db = await openDatabase(path, password);
 
       bool debugModeOn = await Sqflite.getDebugModeOn();
       await Sqflite.setDebugModeOn(true);
@@ -175,7 +171,7 @@ class SimpleTestPage extends TestPage {
     test("Demo", () async {
       // await Sqflite.devSetDebugModeOn();
       String path = await initDeleteDb("simple_demo.db");
-      Database database = await openDatabase(path);
+      Database database = await openDatabase(path, password);
 
       //int version = await database.update("PRAGMA user_version");
       //print("version: ${await database.update("PRAGMA user_version")}");
@@ -185,20 +181,14 @@ class SimpleTestPage extends TestPage {
       await database.execute("DROP TABLE IF EXISTS Test");
 
       print("dropped");
-      await database.execute(
-          "CREATE TABLE Test (id INTEGER PRIMARY KEY, name TEXT, value INTEGER, num REAL)");
+      await database.execute("CREATE TABLE Test (id INTEGER PRIMARY KEY, name TEXT, value INTEGER, num REAL)");
       print("table created");
-      int id = await database.rawInsert(
-          'INSERT INTO Test(name, value, num) VALUES("some name",1234,?)',
-          [456.789]);
+      int id = await database.rawInsert('INSERT INTO Test(name, value, num) VALUES("some name",1234,?)', [456.789]);
       print("inserted1: $id");
-      id = await database.rawInsert(
-          'INSERT INTO Test(name, value) VALUES(?, ?)',
-          ["another name", 12345678]);
+      id = await database.rawInsert('INSERT INTO Test(name, value) VALUES(?, ?)', ["another name", 12345678]);
       print("inserted2: $id");
-      int count = await database.rawUpdate(
-          'UPDATE Test SET name = ?, VALUE = ? WHERE name = ?',
-          ["updated name", "9876", "some name"]);
+      int count =
+          await database.rawUpdate('UPDATE Test SET name = ?, VALUE = ? WHERE name = ?', ["updated name", "9876", "some name"]);
       print("updated: $count");
       expect(count, 1);
       List<Map> list = await database.rawQuery('SELECT * FROM Test');
@@ -211,8 +201,7 @@ class SimpleTestPage extends TestPage {
       print("expected $expectedList");
       expect(list, expectedList);
 
-      count = await database
-          .rawDelete('DELETE FROM Test WHERE name = ?', ['another name']);
+      count = await database.rawDelete('DELETE FROM Test WHERE name = ?', ['another name']);
       print('deleted: $count');
       expect(count, 1);
       list = await database.rawQuery('SELECT * FROM Test');
@@ -242,28 +231,23 @@ class SimpleTestPage extends TestPage {
       deleteDatabase(path);
 
       // open the database
-      Database database = await openDatabase(path, version: 1,
-          onCreate: (Database db, int version) async {
+      Database database = await openDatabase(path, password, version: 1, onCreate: (Database db, int version) async {
         // When creating the db, create the table
-        await db.execute(
-            "CREATE TABLE Test (id INTEGER PRIMARY KEY, name TEXT, value INTEGER, num REAL)");
+        await db.execute("CREATE TABLE Test (id INTEGER PRIMARY KEY, name TEXT, value INTEGER, num REAL)");
       });
 
       // Insert some records in a transaction
       await database.inTransaction(() async {
-        int id1 = await database.rawInsert(
-            'INSERT INTO Test(name, value, num) VALUES("some name", 1234, 456.789)');
+        int id1 = await database.rawInsert('INSERT INTO Test(name, value, num) VALUES("some name", 1234, 456.789)');
         print("inserted1: $id1");
-        int id2 = await database.rawInsert(
-            'INSERT INTO Test(name, value, num) VALUES(?, ?, ?)',
-            ["another name", 12345678, 3.1416]);
+        int id2 =
+            await database.rawInsert('INSERT INTO Test(name, value, num) VALUES(?, ?, ?)', ["another name", 12345678, 3.1416]);
         print("inserted2: $id2");
       });
 
       // Update some record
-      int count = await database.rawUpdate(
-          'UPDATE Test SET name = ?, VALUE = ? WHERE name = ?',
-          ["updated name", "9876", "some name"]);
+      int count =
+          await database.rawUpdate('UPDATE Test SET name = ?, VALUE = ? WHERE name = ?', ["updated name", "9876", "some name"]);
       print("updated: $count");
 
       // Get the records
@@ -278,13 +262,11 @@ class SimpleTestPage extends TestPage {
       expect(list, expectedList);
 
       // Count the records
-      count = Sqflite
-          .firstIntValue(await database.rawQuery("SELECT COUNT(*) FROM Test"));
+      count = Sqflite.firstIntValue(await database.rawQuery("SELECT COUNT(*) FROM Test"));
       expect(count, 2);
 
       // Delete a record
-      count = await database
-          .rawDelete('DELETE FROM Test WHERE name = ?', ['another name']);
+      count = await database.rawDelete('DELETE FROM Test WHERE name = ?', ['another name']);
       expect(count, 1);
 
       // Close the database
@@ -294,7 +276,7 @@ class SimpleTestPage extends TestPage {
     test('BatchQuery', () async {
       // await Sqflite.devSetDebugModeOn();
       String path = await initDeleteDb("batch.db");
-      Database db = await openDatabase(path);
+      Database db = await openDatabase(path, password);
 
       // empty batch
       Batch batch = db.batch();
@@ -328,7 +310,7 @@ class SimpleTestPage extends TestPage {
     test('Batch', () async {
       // await Sqflite.devSetDebugModeOn();
       String path = await initDeleteDb("batch.db");
-      Database db = await openDatabase(path);
+      Database db = await openDatabase(path, password);
 
       // empty batch
       Batch batch = db.batch();
@@ -374,26 +356,22 @@ class SimpleTestPage extends TestPage {
 
       // update
       batch = db.batch();
-      batch.rawUpdate(
-          "UPDATE Test SET name = ? WHERE name = ?", ["new_item", "item1"]);
-      batch.update("Test", {"name": "new_other_item"},
-          where: "name != ?", whereArgs: <String>["new_item"]);
+      batch.rawUpdate("UPDATE Test SET name = ? WHERE name = ?", ["new_item", "item1"]);
+      batch.update("Test", {"name": "new_other_item"}, where: "name != ?", whereArgs: <String>["new_item"]);
       results = await batch.commit();
       expect(results, [1, 2]);
 
       // delete
       batch = db.batch();
       batch.rawDelete("DELETE FROM Test WHERE name = ?", ["new_item"]);
-      batch.delete("Test",
-          where: "name = ?", whereArgs: <String>["new_other_item"]);
+      batch.delete("Test", where: "name = ?", whereArgs: <String>["new_other_item"]);
       results = await batch.commit();
       expect(results, [1, 2]);
 
       // No result
       batch = db.batch();
       batch.insert("Test", {"name": "item"});
-      batch.update("Test", {"name": "new_item"},
-          where: "name = ?", whereArgs: <String>["item"]);
+      batch.update("Test", {"name": "new_item"}, where: "name = ?", whereArgs: <String>["item"]);
       batch.delete("Test", where: "name = ?", whereArgs: ["item"]);
       results = await batch.commit(noResult: true);
       expect(results, null);

@@ -6,6 +6,8 @@ import 'package:sqflite/sqflite.dart';
 
 import 'test_page.dart';
 
+const String password = 'password';
+
 class _Data {
   Database db;
 }
@@ -27,7 +29,7 @@ class TypeTestPage extends TestPage {
     test("int", () async {
       //await Sqflite.devSetDebugModeOn(true);
       String path = await initDeleteDb("type_int.db");
-      data.db = await openDatabase(path, version: 1,
+      data.db = await openDatabase(path, password, version: 1,
           onCreate: (Database db, int version) async {
         await db.execute(
             "CREATE TABLE Test (_id INTEGER PRIMARY KEY, value INTEGER)");
@@ -79,7 +81,7 @@ class TypeTestPage extends TestPage {
     test("real", () async {
       //await Sqflite.devSetDebugModeOn(true);
       String path = await initDeleteDb("type_real.db");
-      data.db = await openDatabase(path, version: 1,
+      data.db = await openDatabase(path, password, version: 1,
           onCreate: (Database db, int version) async {
         await db
             .execute("CREATE TABLE Test (_id INTEGER PRIMARY KEY, value REAL)");
@@ -101,7 +103,7 @@ class TypeTestPage extends TestPage {
     test("text", () async {
       //await Sqflite.devSetDebugModeOn(true);
       String path = await initDeleteDb("type_text.db");
-      data.db = await openDatabase(path, version: 1,
+      data.db = await openDatabase(path, password, version: 1,
           onCreate: (Database db, int version) async {
         await db
             .execute("CREATE TABLE Test (_id INTEGER PRIMARY KEY, value TEXT)");
@@ -122,7 +124,7 @@ class TypeTestPage extends TestPage {
     test("blob", () async {
       //await Sqflite.devSetDebugModeOn(true);
       String path = await initDeleteDb("type_blob.db");
-      data.db = await openDatabase(path, version: 1,
+      data.db = await openDatabase(path, password, version: 1,
           onCreate: (Database db, int version) async {
         await db
             .execute("CREATE TABLE Test (_id INTEGER PRIMARY KEY, value BLOB)");

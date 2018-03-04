@@ -2,14 +2,17 @@ import 'dart:convert';
 
 import 'package:sqflite/sqflite.dart';
 import 'package:sqflite/sql.dart';
+
 import 'test_page.dart';
+
+const String password = 'password';
 
 class ExceptionTestPage extends TestPage {
   ExceptionTestPage() : super("Exception tests") {
     test("Transaction failed", () async {
       //await Sqflite.setDebugModeOn(true);
       String path = await initDeleteDb("transaction_failed.db");
-      Database db = await openDatabase(path);
+      Database db = await openDatabase(path, password);
 
       await db.execute("CREATE TABLE Test (id INTEGER PRIMARY KEY, name TEXT)");
 
@@ -18,8 +21,7 @@ class ExceptionTestPage extends TestPage {
       try {
         await db.inTransaction(() async {
           await db.rawInsert("INSERT INTO Test (name) VALUES (?)", ["item"]);
-          int afterCount = Sqflite
-              .firstIntValue(await db.rawQuery("SELECT COUNT(*) FROM Test"));
+          int afterCount = Sqflite.firstIntValue(await db.rawQuery("SELECT COUNT(*) FROM Test"));
           expect(afterCount, 1);
 
           hasFailed = true;
@@ -33,8 +35,7 @@ class ExceptionTestPage extends TestPage {
       }
       verify(hasFailed);
 
-      int afterCount =
-          Sqflite.firstIntValue(await db.rawQuery("SELECT COUNT(*) FROM Test"));
+      int afterCount = Sqflite.firstIntValue(await db.rawQuery("SELECT COUNT(*) FROM Test"));
       expect(afterCount, 0);
 
       await db.close();
@@ -42,7 +43,7 @@ class ExceptionTestPage extends TestPage {
 
     test("Transaction recursive failed", () async {
       String path = await initDeleteDb("transaction_failed.db");
-      Database db = await openDatabase(path);
+      Database db = await openDatabase(path, password);
 
       await db.execute("CREATE TABLE Test (id INTEGER PRIMARY KEY, name TEXT)");
 
@@ -52,8 +53,7 @@ class ExceptionTestPage extends TestPage {
         await db.inTransaction(() async {
           await db.inTransaction(() async {
             await db.rawInsert("INSERT INTO Test (name) VALUES (?)", ["item"]);
-            int afterCount = Sqflite
-                .firstIntValue(await db.rawQuery("SELECT COUNT(*) FROM Test"));
+            int afterCount = Sqflite.firstIntValue(await db.rawQuery("SELECT COUNT(*) FROM Test"));
             expect(afterCount, 1);
 
             hasFailed = true;
@@ -68,8 +68,7 @@ class ExceptionTestPage extends TestPage {
 
       verify(hasFailed);
 
-      int afterCount =
-          Sqflite.firstIntValue(await db.rawQuery("SELECT COUNT(*) FROM Test"));
+      int afterCount = Sqflite.firstIntValue(await db.rawQuery("SELECT COUNT(*) FROM Test"));
       expect(afterCount, 0);
 
       await db.close();
@@ -78,7 +77,7 @@ class ExceptionTestPage extends TestPage {
     test("Sqlite Exception", () async {
       //await Sqflite.setDebugModeOn(true);
       String path = await initDeleteDb("exception.db");
-      Database db = await openDatabase(path);
+      Database db = await openDatabase(path, password);
 
       // Query
       try {
@@ -122,8 +121,7 @@ class ExceptionTestPage extends TestPage {
 
     test("Open onDowngrade fail", () async {
       String path = await initDeleteDb("open_on_downgrade_fail.db");
-      Database database = await openDatabase(path, version: 2,
-          onCreate: (Database db, int version) async {
+      Database database = await openDatabase(path, password, version: 2, onCreate: (Database db, int version) async {
         await db.execute("CREATE TABLE Test(id INTEGER PRIMARY KEY)");
       });
       await database.close();
@@ -131,24 +129,21 @@ class ExceptionTestPage extends TestPage {
       // currently this is crashing...
       // should fail going back in versions
       try {
-        database = await openDatabase(path,
-            version: 1, onDowngrade: onDatabaseVersionChangeError);
+        database = await openDatabase(path, password, version: 1, onDowngrade: onDatabaseVersionChangeError);
         verify(false);
       } catch (e) {
         print(e);
       }
 
       // should work
-      database = await openDatabase(path,
-          version: 2, onDowngrade: onDatabaseVersionChangeError);
+      database = await openDatabase(path, password, version: 2, onDowngrade: onDatabaseVersionChangeError);
       print(database);
       await database.close();
     });
 
     test("Access after close", () async {
       String path = await initDeleteDb("access_after_close.db");
-      Database database = await openDatabase(path, version: 3,
-          onCreate: (Database db, int version) async {
+      Database database = await openDatabase(path, password, version: 3, onCreate: (Database db, int version) async {
         await db.execute("CREATE TABLE Test(id INTEGER PRIMARY KEY)");
       });
       await database.close();
@@ -172,7 +167,7 @@ class ExceptionTestPage extends TestPage {
     test("Non escaping fields", () async {
       //await Sqflite.setDebugModeOn(true);
       String path = await initDeleteDb("non_escaping_fields.db");
-      Database db = await openDatabase(path);
+      Database db = await openDatabase(path, password);
 
       String table = "table";
       try {

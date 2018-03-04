@@ -7,6 +7,8 @@ final String columnId = "_id";
 final String columnTitle = "title";
 final String columnDone = "done";
 
+const String password = 'password';
+
 class Todo {
   int id;
   String title;
@@ -36,7 +38,7 @@ class TodoProvider {
   Database db;
 
   Future open(String path) async {
-    db = await openDatabase(path, version: 1,
+    db = await openDatabase(path, password, version: 1,
         onCreate: (Database db, int version) async {
       await db.execute('''
 create table $tableTodo ( 
