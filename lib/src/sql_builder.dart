@@ -1,5 +1,5 @@
 //
-// Sql builder similar to Android ported to dart by Razvan Lung
+// Sql builder similar to Android ported to dart by Razvan Lung(long1eu)
 // Adapted by Alexandre Roux
 //
 

@@ -32,8 +32,7 @@ class Sqflite {
   //static MethodChannel get _channel => channel;
   static bool _debugModeOn = false;
 
-  static Future<String> get platformVersion =>
-      invokeMethod<String>(methodGetPlatformVersion);
+  static Future<String> get platformVersion => invokeMethod<String>(methodGetPlatformVersion);
 
   /// turn on debug mode if you want to see the SQL query
   /// executed natively
@@ -117,26 +116,21 @@ abstract class Database extends SqfliteDatabaseExecutor {
   Future devInvokeSqlMethod(String method, String sql, [List arguments]);
 }
 
-typedef FutureOr OnDatabaseVersionChangeFn(
-    Database db, int oldVersion, int newVersion);
+typedef FutureOr OnDatabaseVersionChangeFn(Database db, int oldVersion, int newVersion);
 typedef FutureOr OnDatabaseCreateFn(Database db, int newVersion);
 typedef FutureOr OnDatabaseOpenFn(Database db);
 typedef FutureOr OnDatabaseConfigureFn(Database db);
 
 // Downgrading will always fail
-Future onDatabaseVersionChangeError(
-    Database db, int oldVersion, int newVersion) async {
-  throw new ArgumentError(
-      "can't change version from $oldVersion to $newVersion");
+Future onDatabaseVersionChangeError(Database db, int oldVersion, int newVersion) async {
+  throw new ArgumentError("can't change version from $oldVersion to $newVersion");
 }
 
-Future __onDatabaseDowngradeDelete(
-    Database db, int oldVersion, int newVersion) async {
+Future __onDatabaseDowngradeDelete(Database db, int oldVersion, int newVersion) async {
   // Implementation is hidden implemented in openDatabase._onDatabaseDowngradeDelete
 }
 // Downgrading will delete the database and open it again
-final OnDatabaseVersionChangeFn onDatabaseDowngradeDelete =
-    __onDatabaseDowngradeDelete;
+final OnDatabaseVersionChangeFn onDatabaseDowngradeDelete = __onDatabaseDowngradeDelete;
 
 ///
 /// Open the database at a given path
@@ -149,14 +143,14 @@ final OnDatabaseVersionChangeFn onDatabaseDowngradeDelete =
 /// [onOpen] are called. It should not modify the database except to configure
 /// the database connection as required.
 ///
-Future<Database> openDatabase(String path,
+Future<Database> openDatabase(String path, String password,
         {int version,
         OnDatabaseConfigureFn onConfigure,
         OnDatabaseCreateFn onCreate,
         OnDatabaseVersionChangeFn onUpgrade,
         OnDatabaseVersionChangeFn onDowngrade,
         OnDatabaseOpenFn onOpen}) =>
-    impl.openDatabase(path,
+    impl.openDatabase(path, password,
         version: version,
         onConfigure: onConfigure,
         onCreate: onCreate,
@@ -192,15 +186,13 @@ abstract class Batch {
   void rawInsert(String sql, [List arguments]);
 
   /// See [Database.insert]
-  void insert(String table, Map<String, dynamic> values,
-      {String nullColumnHack, ConflictAlgorithm conflictAlgorithm});
+  void insert(String table, Map<String, dynamic> values, {String nullColumnHack, ConflictAlgorithm conflictAlgorithm});
 
   /// See [Database.rawUpdate]
   void rawUpdate(String sql, [List arguments]);
 
   /// See [Database.update]
-  void update(String table, Map<String, dynamic> values,
-      {String where, List whereArgs, ConflictAlgorithm conflictAlgorithm});
+  void update(String table, Map<String, dynamic> values, {String where, List whereArgs, ConflictAlgorithm conflictAlgorithm});
 
   /// See [Database.rawDelete]
   void rawDelete(String sql, [List arguments]);

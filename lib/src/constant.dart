@@ -19,6 +19,7 @@ const String paramMethod = "method";
 
 // The database id
 const String paramPath = "path";
+const String paramPassword = "password";
 const String paramVersion = "version";
 const String paramId = "id";
 
