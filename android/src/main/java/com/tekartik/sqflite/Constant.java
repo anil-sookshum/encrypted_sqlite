@@ -19,6 +19,7 @@ public class Constant {
 
     static final String PARAM_ID = "id";
     static final String PARAM_PATH = "path";
+    static final String PARAM_PASSWORD = "PASSWORD";
 
     static final String PARAM_QUERY_AS_MAP_LIST = "queryAsMapList"; // boolean
 

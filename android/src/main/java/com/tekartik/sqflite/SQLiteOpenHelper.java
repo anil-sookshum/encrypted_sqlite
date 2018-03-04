@@ -2,10 +2,10 @@ package com.tekartik.sqflite;
 
 
 import android.content.Context;
-import android.database.DatabaseErrorHandler;
-import android.database.sqlite.SQLiteDatabase;
-import android.database.sqlite.SQLiteDatabase.CursorFactory;
-import android.database.sqlite.SQLiteException;
+
+import net.sqlcipher.DatabaseErrorHandler;
+import net.sqlcipher.database.SQLiteDatabase;
+import net.sqlcipher.database.SQLiteException;
 
 /**
  * A helper class to manage database creation and version management.
@@ -40,7 +40,8 @@ public abstract class SQLiteOpenHelper {
 
     private final Context mContext;
     private final String mName;
-    private final CursorFactory mFactory;
+    private final SQLiteDatabase.CursorFactory mFactory;
+    private final String password;
 
     private SQLiteDatabase mDatabase;
     private boolean mIsInitializing;
@@ -53,12 +54,13 @@ public abstract class SQLiteOpenHelper {
      * created or opened until one of {@link #getWritableDatabase} or
      * {@link #getReadableDatabase} is called.
      *
-     * @param context to use to open or create the database
-     * @param name    of the database file, or null for an in-memory database
-     * @param factory to use for creating cursor objects, or null for the default
+     * @param context  to use to open or create the database
+     * @param name     of the database file
+     * @param password
+     * @param factory  to use for creating cursor objects, or null for the default
      */
-    public SQLiteOpenHelper(Context context, String name, CursorFactory factory) {
-        this(context, name, factory, null);
+    public SQLiteOpenHelper(Context context, String name, String password, SQLiteDatabase.CursorFactory factory) {
+        this(context, name, password, factory, null);
     }
 
     /**
@@ -70,16 +72,17 @@ public abstract class SQLiteOpenHelper {
      * used to handle corruption when sqlite reports database corruption.</p>
      *
      * @param context      to use to open or create the database
-     * @param name         of the database file, or null for an in-memory database
+     * @param name         of the database file
+     * @param password
      * @param factory      to use for creating cursor objects, or null for the default
      * @param errorHandler the {@link DatabaseErrorHandler} to be used when sqlite reports database
-     *                     corruption, or null to use the default error handler.
      */
-    public SQLiteOpenHelper(Context context, String name, CursorFactory factory,
+    public SQLiteOpenHelper(Context context, String name, String password, SQLiteDatabase.CursorFactory factory,
                             DatabaseErrorHandler errorHandler) {
         mContext = context;
-        mName = name;
+        mName = name == null ? "base.db" : name;
         mFactory = factory;
+        this.password = password;
         mErrorHandler = errorHandler;
     }
 
@@ -89,31 +92,6 @@ public abstract class SQLiteOpenHelper {
      */
     public String getDatabaseName() {
         return mName;
-    }
-
-    /**
-     * Enables or disables the use of write-ahead logging for the database.
-     * <p>
-     * Write-ahead logging cannot be used with read-only databases so the value of
-     * this flag is ignored if the database is opened read-only.
-     *
-     * @param enabled True if write-ahead logging should be enabled, false if it
-     *                should be disabled.
-     * @see SQLiteDatabase#enableWriteAheadLogging()
-     */
-    public void setWriteAheadLoggingEnabled(boolean enabled) {
-        synchronized (this) {
-            if (mEnableWriteAheadLogging != enabled) {
-                if (mDatabase != null && mDatabase.isOpen() && !mDatabase.isReadOnly()) {
-                    if (enabled) {
-                        mDatabase.enableWriteAheadLogging();
-                    } else {
-                        mDatabase.disableWriteAheadLogging();
-                    }
-                }
-                mEnableWriteAheadLogging = enabled;
-            }
-        }
     }
 
     /**
@@ -187,12 +165,7 @@ public abstract class SQLiteOpenHelper {
             if (db != null) {
                 // Ok
             } else if (mName == null) {
-                db = SQLiteDatabase.create(null);
-            } else {
-                db = mContext.openOrCreateDatabase(mName, mEnableWriteAheadLogging ?
-                                Context.MODE_ENABLE_WRITE_AHEAD_LOGGING : 0,
-                        mFactory, mErrorHandler);
-
+                db = SQLiteDatabase.openOrCreateDatabase(mContext.getDatabasePath(mName), password, mFactory, null, mErrorHandler);
             }
 
             onConfigure(db);
@@ -221,6 +194,9 @@ public abstract class SQLiteOpenHelper {
         }
     }
 
+    //todo add this:
+    // PRAGMA foreign_keys = ON;
+    // PRAGMA journal_mode=WAL;
     /**
      * Called when the database connection is being configured, to enable features
      * such as write-ahead logging or foreign key support.
@@ -229,9 +205,8 @@ public abstract class SQLiteOpenHelper {
      * the database except to configure the database connection as required.
      * </p><p>
      * This method should only call methods that configure the parameters of the
-     * database connection, such as {@link SQLiteDatabase#enableWriteAheadLogging}
-     * {@link SQLiteDatabase#setForeignKeyConstraintsEnabled},
-     * {@link SQLiteDatabase#setLocale}, {@link SQLiteDatabase#setMaximumSize},
+     * database connection, such as {@link SQLiteDatabase#setLocale},
+     * {@link SQLiteDatabase#setMaximumSize},
      * or executing PRAGMA statements.
      * </p>
      *

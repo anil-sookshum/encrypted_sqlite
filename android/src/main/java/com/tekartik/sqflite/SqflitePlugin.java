@@ -3,9 +3,6 @@ package com.tekartik.sqflite;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.database.Cursor;
-import android.database.SQLException;
-import android.database.sqlite.SQLiteCantOpenDatabaseException;
-import android.database.sqlite.SQLiteDatabase;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.util.Log;
@@ -14,6 +11,9 @@ import com.tekartik.sqflite.operation.BatchOperation;
 import com.tekartik.sqflite.operation.MethodCallOperation;
 import com.tekartik.sqflite.operation.Operation;
 import com.tekartik.sqflite.operation.OperationResult;
+
+import net.sqlcipher.SQLException;
+import net.sqlcipher.database.SQLiteDatabase;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -41,6 +41,7 @@ import static com.tekartik.sqflite.Constant.METHOD_QUERY;
 import static com.tekartik.sqflite.Constant.METHOD_UPDATE;
 import static com.tekartik.sqflite.Constant.PARAM_ID;
 import static com.tekartik.sqflite.Constant.PARAM_OPERATIONS;
+import static com.tekartik.sqflite.Constant.PARAM_PASSWORD;
 import static com.tekartik.sqflite.Constant.PARAM_PATH;
 import static com.tekartik.sqflite.Constant.PARAM_SQL;
 import static com.tekartik.sqflite.Constant.PARAM_SQL_ARGUMENTS;
@@ -648,19 +649,6 @@ public class SqflitePlugin implements MethodCallHandler {
 
     @Deprecated
     private boolean handleException(SQLException exception, Result result, String path) {
-        if (exception instanceof SQLiteCantOpenDatabaseException) {
-            result.error(Constant.SQLITE_ERROR, Constant.ERROR_OPEN_FAILED + " " + path, null);
-            return true;
-        }
-        result.error(Constant.SQLITE_ERROR, exception.getMessage(), null);
-        return true;
-    }
-
-    private boolean handleException(SQLException exception, OperationResult result, String path) {
-        if (exception instanceof SQLiteCantOpenDatabaseException) {
-            result.error(Constant.SQLITE_ERROR, Constant.ERROR_OPEN_FAILED + " " + path, null);
-            return true;
-        }
         result.error(Constant.SQLITE_ERROR, exception.getMessage(), null);
         return true;
     }
@@ -670,7 +658,8 @@ public class SqflitePlugin implements MethodCallHandler {
     }
 
     private boolean handleException(SQLException exception, OperationResult result, Database database) {
-        return handleException(exception, result, database.path);
+        result.error(Constant.SQLITE_ERROR, exception.getMessage(), database.path);
+        return true;
     }
 
     //
@@ -678,6 +667,7 @@ public class SqflitePlugin implements MethodCallHandler {
     //
     private void onOpenDatabaseCall(MethodCall call, Result result) {
         String path = call.argument(PARAM_PATH);
+        String password = call.argument(PARAM_PASSWORD);
         //int version = call.argument(PARAM_VERSION);
         File file = new File(path);
         File directory = new File(file.getParent());
@@ -694,7 +684,7 @@ public class SqflitePlugin implements MethodCallHandler {
         synchronized (databaseMapLocker) {
             databaseId = ++this.databaseId;
         }
-        Database database = new Database(context, path);
+        Database database = new Database(context, path, password);
         // force opening
         try {
 
@@ -813,8 +803,8 @@ public class SqflitePlugin implements MethodCallHandler {
     private static class Database extends SQLiteOpenHelper {
         String path;
 
-        private Database(Context context, String path) {
-            super(context, path, null);
+        private Database(Context context, String path, String password) {
+            super(context, path, password, null);
             this.path = path;
         }
 
