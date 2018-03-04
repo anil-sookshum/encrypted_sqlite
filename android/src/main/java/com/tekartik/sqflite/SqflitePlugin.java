@@ -650,7 +650,7 @@ public class SqflitePlugin implements MethodCallHandler {
 
     @Deprecated
     private boolean handleException(SQLException exception, Result result, String path) {
-        result.error(Constant.SQLITE_ERROR, exception.getMessage(), null);
+        result.error(Constant.SQLITE_ERROR, exception.getMessage(), path);
         return true;
     }
 
@@ -691,13 +691,10 @@ public class SqflitePlugin implements MethodCallHandler {
 
             database.open();
         } catch (SQLException e) {
-            if (handleException(e, result, path)) {
-                return;
-            }
+            if (handleException(e, result, path)) return;
             throw e;
         }
 
-        //SQLiteDatabase sqLiteDatabase = SQLiteDatabase.openDatabase(path, null, 0);
         synchronized (databaseMapLocker) {
             if (databaseOpenCount++ == 0) {
                 handlerThread = new HandlerThread("Sqflite");

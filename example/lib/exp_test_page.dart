@@ -17,18 +17,17 @@ class ExpTestPage extends TestPage {
         await db.execute("CREATE TABLE Test (_id INTEGER PRIMARY KEY, value REAL)");
       });
       await db.close();
+      String exception = '';
 
-      db = await openDatabase(path, "bad password");
-
-      Exception exception;
       try {
+        db = await openDatabase(path, "bad password");
         await db.insert("Test", {"value": -1.1});
       } catch (e) {
-        exception = e;
+        print(e);
+        exception = e.toString();
       }
 
-      expect(exception.toString().contains('file is not a database'), true);
-      await db.close();
+      expect(exception.contains('file is not a database'), true);
     });
 
     test("order_by", () async {
