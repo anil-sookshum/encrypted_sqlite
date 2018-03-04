@@ -1,4 +1,5 @@
 import 'package:sqflite/sqflite.dart';
+
 import 'test_page.dart';
 
 final String tableTodo = "todo";
@@ -10,21 +11,37 @@ const String password = 'password';
 
 class ExpTestPage extends TestPage {
   ExpTestPage() : super("Exp Tests") {
+    test("bad password", () async {
+      String path = await initDeleteDb("bad_password.db");
+      Database db = await openDatabase(path, password, version: 1, onCreate: (Database db, int version) async {
+        await db.execute("CREATE TABLE Test (_id INTEGER PRIMARY KEY, value REAL)");
+      });
+      await db.close();
+
+      db = await openDatabase(path, "bad password");
+
+      Exception exception;
+      try {
+        await db.insert("Test", {"value": -1.1});
+      } catch (e) {
+        exception = e;
+      }
+
+      expect(exception.toString().contains('file is not a database'), true);
+      await db.close();
+    });
+
     test("order_by", () async {
       //await Sqflite.setDebugModeOn(true);
       String path = await initDeleteDb("order_by_exp.db");
       Database db = await openDatabase(path, password);
 
       String table = "test";
-      await db
-          .execute("CREATE TABLE $table (column_1 INTEGER, column_2 INTEGER)");
+      await db.execute("CREATE TABLE $table (column_1 INTEGER, column_2 INTEGER)");
       // inserted in a wrong order to check ASC/DESC
-      await db
-          .execute("INSERT INTO $table (column_1, column_2) VALUES (11, 180)");
-      await db
-          .execute("INSERT INTO $table (column_1, column_2) VALUES (10, 180)");
-      await db
-          .execute("INSERT INTO $table (column_1, column_2) VALUES (10, 2000)");
+      await db.execute("INSERT INTO $table (column_1, column_2) VALUES (11, 180)");
+      await db.execute("INSERT INTO $table (column_1, column_2) VALUES (10, 180)");
+      await db.execute("INSERT INTO $table (column_1, column_2) VALUES (10, 2000)");
 
       var expectedResult = [
         {"column_1": 10, "column_2": 2000},
@@ -32,8 +49,7 @@ class ExpTestPage extends TestPage {
         {"column_1": 11, "column_2": 180}
       ];
 
-      var result = await db.rawQuery(
-          "SELECT * FROM $table ORDER BY column_1 ASC, column_2 DESC");
+      var result = await db.rawQuery("SELECT * FROM $table ORDER BY column_1 ASC, column_2 DESC");
       //print(JSON.encode(result));
       expect(result, expectedResult);
       result = await db.query(table, orderBy: "column_1 ASC, column_2 DESC");
@@ -48,16 +64,11 @@ class ExpTestPage extends TestPage {
       Database db = await openDatabase(path, password);
 
       String table = "test";
-      await db
-          .execute("CREATE TABLE $table (column_1 INTEGER, column_2 INTEGER)");
-      await db
-          .execute("INSERT INTO $table (column_1, column_2) VALUES (1, 1001)");
-      await db
-          .execute("INSERT INTO $table (column_1, column_2) VALUES (2, 1002)");
-      await db
-          .execute("INSERT INTO $table (column_1, column_2) VALUES (2, 1012)");
-      await db
-          .execute("INSERT INTO $table (column_1, column_2) VALUES (3, 1003)");
+      await db.execute("CREATE TABLE $table (column_1 INTEGER, column_2 INTEGER)");
+      await db.execute("INSERT INTO $table (column_1, column_2) VALUES (1, 1001)");
+      await db.execute("INSERT INTO $table (column_1, column_2) VALUES (2, 1002)");
+      await db.execute("INSERT INTO $table (column_1, column_2) VALUES (2, 1012)");
+      await db.execute("INSERT INTO $table (column_1, column_2) VALUES (3, 1003)");
 
       var expectedResult = [
         {"column_1": 1, "column_2": 1001},
@@ -66,16 +77,12 @@ class ExpTestPage extends TestPage {
       ];
 
       // testing with value in the In clause
-      var result = await db.query(table,
-          where: "column_1 IN (1, 2)", orderBy: "column_1 ASC, column_2 ASC");
+      var result = await db.query(table, where: "column_1 IN (1, 2)", orderBy: "column_1 ASC, column_2 ASC");
       //print(JSON.encode(result));
       expect(result, expectedResult);
 
       // testing with value as arguments
-      result = await db.query(table,
-          where: "column_1 IN (?, ?)",
-          whereArgs: ["1", "2"],
-          orderBy: "column_1 ASC, column_2 ASC");
+      result = await db.query(table, where: "column_1 IN (?, ?)", whereArgs: ["1", "2"], orderBy: "column_1 ASC, column_2 ASC");
       expect(result, expectedResult);
 
       await db.close();
@@ -95,12 +102,10 @@ class ExpTestPage extends TestPage {
         {"group": 1}
       ];
 
-      var result = await db
-          .rawQuery('SELECT "group" FROM "$table" ORDER BY "group" DESC');
+      var result = await db.rawQuery('SELECT "group" FROM "$table" ORDER BY "group" DESC');
       print(result);
       expect(result, expectedResult);
-      result =
-          await db.rawQuery("SELECT * FROM '$table' ORDER BY `group` DESC");
+      result = await db.rawQuery("SELECT * FROM '$table' ORDER BY `group` DESC");
       //print(JSON.encode(result));
       expect(result, expectedResult);
 
@@ -119,15 +124,13 @@ class ExpTestPage extends TestPage {
       // inserted in a wrong order to check ASC/DESC
 
       await db.insert(table, {"group": "group_value"});
-      await db.update(table, {"group": "group_new_value"},
-          where: "\"group\" = 'group_value'");
+      await db.update(table, {"group": "group_new_value"}, where: "\"group\" = 'group_value'");
 
       var expectedResult = [
         {"group": "group_new_value"}
       ];
 
-      var result =
-          await db.query(table, columns: ["group"], orderBy: '"group" DESC');
+      var result = await db.query(table, columns: ["group"], orderBy: '"group" DESC');
       //print(JSON.encode(result));
       expect(result, expectedResult);
 
@@ -187,8 +190,7 @@ class ExpTestPage extends TestPage {
       Database db = await openDatabase(path, password);
 
       String table = "alias";
-      await db
-          .execute("CREATE TABLE $table (column_1 INTEGER, column_2 INTEGER)");
+      await db.execute("CREATE TABLE $table (column_1 INTEGER, column_2 INTEGER)");
       await db.insert(table, {"column_1": 1, "column_2": 2});
 
       var result = await db.rawQuery('''
@@ -206,8 +208,7 @@ class ExpTestPage extends TestPage {
       Database db = await openDatabase(path, password);
 
       String table = "test";
-      await db
-          .execute("CREATE TABLE $table (column_1 INTEGER, column_2 INTEGER)");
+      await db.execute("CREATE TABLE $table (column_1 INTEGER, column_2 INTEGER)");
       await db.insert(table, {"column_1": 1, "column_2": 2});
 
       var result = await db.rawQuery('''

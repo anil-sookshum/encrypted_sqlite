@@ -180,39 +180,6 @@ class OpenTestPage extends TestPage {
       await database.close();
     });
 
-    test("Open bad path", () async {
-      try {
-        await openDatabase("/invalid_path", password);
-        fail();
-      } on DatabaseException catch (e) {
-        verify(e.isOpenFailedError());
-      }
-    });
-
-    test("Open asset database", () async {
-      // await Sqflite.devSetDebugModeOn(false);
-      Directory documentsDirectory = await getApplicationDocumentsDirectory();
-      String path = join(documentsDirectory.path, "asset_example.db");
-
-      // delete existing if any
-      await deleteDatabase(path);
-
-      // Copy from asset
-      ByteData data = await rootBundle.load(join("assets", "example.db"));
-      List<int> bytes = data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
-      await new File(path).writeAsBytes(bytes);
-
-      // open the database
-      Database db = await openDatabase(path, password);
-
-      // Our database as a single table with a single element
-      List<Map<String, dynamic>> list = await db.rawQuery("SELECT * FROM Test");
-      print("list $list");
-      expect(list.first["name"], "simple value");
-
-      await db.close();
-    });
-
     test("Open on configure", () async {
       Directory documentsDirectory = await getApplicationDocumentsDirectory();
       String path = join(documentsDirectory.path, "open_on_configure.db");

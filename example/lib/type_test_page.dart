@@ -29,10 +29,8 @@ class TypeTestPage extends TestPage {
     test("int", () async {
       //await Sqflite.devSetDebugModeOn(true);
       String path = await initDeleteDb("type_int.db");
-      data.db = await openDatabase(path, password, version: 1,
-          onCreate: (Database db, int version) async {
-        await db.execute(
-            "CREATE TABLE Test (_id INTEGER PRIMARY KEY, value INTEGER)");
+      data.db = await openDatabase(path, password, version: 1, onCreate: (Database db, int version) async {
+        await db.execute("CREATE TABLE Test (_id INTEGER PRIMARY KEY, value INTEGER)");
       });
       int id = await insertValue(-1);
       expect(await getValue(id), -1);
@@ -48,20 +46,17 @@ class TypeTestPage extends TestPage {
 
       id = await insertValue(pow(2, 62));
       //devPrint("2^62: ${pow(2, 62)} ${await getValue(id)}");
-      expect(await getValue(id), pow(2, 62),
-          reason: "2^62: ${pow(2, 62)} ${await getValue(id)}");
+      expect(await getValue(id), pow(2, 62), reason: "2^62: ${pow(2, 62)} ${await getValue(id)}");
 
       int value = pow(2, 63) - 1;
       id = await insertValue(value);
       //devPrint("${value} ${await getValue(id)}");
-      expect(await getValue(id), value,
-          reason: "${value} ${await getValue(id)}");
+      expect(await getValue(id), value, reason: "${value} ${await getValue(id)}");
 
       value = -(pow(2, 63));
       id = await insertValue(value);
       //devPrint("${value} ${await getValue(id)}");
-      expect(await getValue(id), value,
-          reason: "${value} ${await getValue(id)}");
+      expect(await getValue(id), value, reason: "${value} ${await getValue(id)}");
       /*
       id = await insertValue(pow(2, 63));
       devPrint("2^63: ${pow(2, 63)} ${await getValue(id)}");
@@ -81,10 +76,8 @@ class TypeTestPage extends TestPage {
     test("real", () async {
       //await Sqflite.devSetDebugModeOn(true);
       String path = await initDeleteDb("type_real.db");
-      data.db = await openDatabase(path, password, version: 1,
-          onCreate: (Database db, int version) async {
-        await db
-            .execute("CREATE TABLE Test (_id INTEGER PRIMARY KEY, value REAL)");
+      data.db = await openDatabase(path, password, version: 1, onCreate: (Database db, int version) async {
+        await db.execute("CREATE TABLE Test (_id INTEGER PRIMARY KEY, value REAL)");
       });
       int id = await insertValue(-1.1);
       expect(await getValue(id), -1.1);
@@ -103,10 +96,8 @@ class TypeTestPage extends TestPage {
     test("text", () async {
       //await Sqflite.devSetDebugModeOn(true);
       String path = await initDeleteDb("type_text.db");
-      data.db = await openDatabase(path, password, version: 1,
-          onCreate: (Database db, int version) async {
-        await db
-            .execute("CREATE TABLE Test (_id INTEGER PRIMARY KEY, value TEXT)");
+      data.db = await openDatabase(path, password, version: 1, onCreate: (Database db, int version) async {
+        await db.execute("CREATE TABLE Test (_id INTEGER PRIMARY KEY, value TEXT)");
       });
       int id = await insertValue("simple text");
       expect(await getValue(id), "simple text");
@@ -124,10 +115,8 @@ class TypeTestPage extends TestPage {
     test("blob", () async {
       //await Sqflite.devSetDebugModeOn(true);
       String path = await initDeleteDb("type_blob.db");
-      data.db = await openDatabase(path, password, version: 1,
-          onCreate: (Database db, int version) async {
-        await db
-            .execute("CREATE TABLE Test (_id INTEGER PRIMARY KEY, value BLOB)");
+      data.db = await openDatabase(path, password, version: 1, onCreate: (Database db, int version) async {
+        await db.execute("CREATE TABLE Test (_id INTEGER PRIMARY KEY, value BLOB)");
       });
       try {
         // insert text in blob
@@ -148,8 +137,7 @@ class TypeTestPage extends TestPage {
 
         id = await insertValue([1, 2, 3, 4]);
         //print(await getValue(id));
-        expect(await getValue(id), [1, 2, 3, 4],
-            reason: "${await getValue(id)}");
+        expect(await getValue(id), [1, 2, 3, 4], reason: "${await getValue(id)}");
       } finally {
         await data.db.close();
       }
