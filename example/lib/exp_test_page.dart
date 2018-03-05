@@ -27,7 +27,7 @@ class ExpTestPage extends TestPage {
         exception = e.toString();
       }
 
-      expect(exception.contains('file is not a database'), true);
+      expect(exception.contains(new RegExp('file is not a database|file is encrypted')), true);
     });
 
     test("order_by", () async {
