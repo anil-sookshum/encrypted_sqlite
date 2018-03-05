@@ -12,18 +12,18 @@ const String password = 'password';
 class ExpTestPage extends TestPage {
   ExpTestPage() : super("Exp Tests") {
     test("bad password", () async {
-      String path = await initDeleteDb("bad_password.db");
-      Database db = await openDatabase(path, password, version: 1, onCreate: (Database db, int version) async {
-        await db.execute("CREATE TABLE Test (_id INTEGER PRIMARY KEY, value REAL)");
-      });
-      await db.close();
       String exception = '';
-
       try {
+        String path = await initDeleteDb("bad_password.db");
+        Database db = await openDatabase(path, password, version: 1, onCreate: (Database db, int version) async {
+          await db.execute("CREATE TABLE Test (_id INTEGER PRIMARY KEY, value REAL)");
+        });
+        await db.close();
+
         db = await openDatabase(path, "bad password");
         await db.insert("Test", {"value": -1.1});
       } catch (e) {
-        print(e);
+        print('The exception is: $e');
         exception = e.toString();
       }
 
