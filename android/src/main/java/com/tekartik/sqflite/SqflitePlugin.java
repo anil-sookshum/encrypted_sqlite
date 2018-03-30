@@ -687,7 +687,7 @@ public class SqflitePlugin implements MethodCallHandler {
         synchronized (databaseMapLocker) {
             databaseId = ++this.databaseId;
         }
-        Database database = new Database(context, path, password);
+        Database database = new Database(path, password);
         // force opening
         try {
             if (Boolean.TRUE.equals(readOnly)) {
@@ -805,20 +805,21 @@ public class SqflitePlugin implements MethodCallHandler {
 
     private static class Database {
         String path;
+        String password;
         SQLiteDatabase sqliteDatabase;
 
-        private Database(Context context, String path, String password) {
-            super(context, path, password, null);
-        private Database(Context context, String path) {
+
+        private Database(String path, String password) {
             this.path = path;
+            this.password = password;
         }
 
         private void open() {
-            sqliteDatabase = SQLiteDatabase.openOrCreateDatabase(path, null);
+            sqliteDatabase = SQLiteDatabase.openOrCreateDatabase(path, password,null);
         }
 
         private void openReadOnly() {
-            sqliteDatabase = SQLiteDatabase.openDatabase(path, null, SQLiteDatabase.OPEN_READONLY);
+            sqliteDatabase = SQLiteDatabase.openDatabase(path, password, null, SQLiteDatabase.OPEN_READONLY);
         }
 
         public void close() {
