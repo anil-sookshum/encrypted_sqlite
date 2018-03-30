@@ -11,6 +11,9 @@ import 'src/utils.dart';
 export 'sql.dart' show ConflictAlgorithm;
 export 'src/exception.dart' show DatabaseException;
 
+///
+/// internal options
+///
 class SqfliteOptions {
   // true =<0.7.0
   bool queryAsMapList;
@@ -31,7 +34,8 @@ class Sqflite {
   //static MethodChannel get _channel => channel;
   static bool _debugModeOn = false;
 
-  static Future<String> get platformVersion => invokeMethod<String>(methodGetPlatformVersion);
+  static Future<String> get platformVersion =>
+      invokeMethod<String>(methodGetPlatformVersion);
 
   /// turn on debug mode if you want to see the SQL query
   /// executed natively
@@ -72,6 +76,9 @@ class Sqflite {
   }
 }
 
+///
+/// Common API for [Database] and [Transaction] to execute SQL commands
+///
 abstract class DatabaseExecutor {
   /// for sql without return values
   Future execute(String sql, [List arguments]);
@@ -156,6 +163,14 @@ abstract class DatabaseExecutor {
   ///         otherwise. To remove all rows and get a count pass "1" as the
   ///         whereClause.
   Future<int> delete(String table, {String where, List whereArgs});
+
+  /// Execute all batch operation
+  /// The result is a list of the result of each operation in the same order
+  /// if [noResult] is true, the result list is empty (i.e. the id inserted
+  /// the count of item changed is not returned
+  ///
+  /// If called on a database a transaction is created
+  Future<List<dynamic>> applyBatch(Batch batch, {bool noResult});
 }
 
 /// Database transaction
@@ -163,8 +178,7 @@ abstract class DatabaseExecutor {
 abstract class Transaction implements DatabaseExecutor {}
 
 ///
-/// Database support
-/// to send sql commands
+/// Database to send sql commands, created during [openDatabase]
 ///
 abstract class Database implements DatabaseExecutor {
   /// The path of the database
@@ -177,9 +191,9 @@ abstract class Database implements DatabaseExecutor {
   /// synchronized call to the database
   /// ensure that no other calls outside the inner action will
   /// access the database
-  /// Use [Zone] so should be deprecated soon starting 0.9.0
-  ///
-  // @deprecated
+  /// Use [Zone] so should be deprecated soon starting 0.8.1
+  // Deprecated since 2018-03-01 - 0.8.1
+  @deprecated
   Future<T> synchronized<T>(Future<T> action());
 
   /// Calls in action must only be done using the transaction object
@@ -187,10 +201,12 @@ abstract class Database implements DatabaseExecutor {
   Future<T> transaction<T>(Future<T> action(Transaction txn), {bool exclusive});
 
   ///
-  /// Simple soon to be deprecated soon starting 0.9.0
-  /// (used Zone) transaction mechanism
+  /// Simple soon to be deprecated soon starting 0.8.1
+  /// (it uses Zone in order to be re-entrant) transaction mechanism
   ///
-  // @deprecated
+  // User [transaction] instead
+  // Deprecated since 2018-03-01 - 0.8.1
+  @deprecated
   Future<T> inTransaction<T>(Future<T> action(), {bool exclusive});
 
   ///
@@ -204,10 +220,6 @@ abstract class Database implements DatabaseExecutor {
   ///
   Future setVersion(int version);
 
-  /// Creates a batch, used for performing multiple operation
-  /// in a single atomic operation.
-  Batch batch();
-
   /// testing only
   @deprecated
   Future devInvokeMethod(String method, [dynamic arguments]);
@@ -215,34 +227,48 @@ abstract class Database implements DatabaseExecutor {
   /// testing only
   @deprecated
   Future devInvokeSqlMethod(String method, String sql, [List arguments]);
+
+  /// Creates a batch, used for performing multiple operation
+  /// in a single atomic operation.
+  ///
+  /// a batch can be commited using [Batch.commit] if you are not in
+  /// a transaction. You can create within a transaction
+  /// however call [Transaction.applyBatch] to run the batch
+  Batch batch();
 }
 
-typedef FutureOr OnDatabaseVersionChangeFn(Database db, int oldVersion, int newVersion);
+typedef FutureOr OnDatabaseVersionChangeFn(
+    Database db, int oldVersion, int newVersion);
 typedef FutureOr OnDatabaseCreateFn(Database db, int newVersion);
 typedef FutureOr OnDatabaseOpenFn(Database db);
 typedef FutureOr OnDatabaseConfigureFn(Database db);
 
-// Downgrading will always fail
-Future onDatabaseVersionChangeError(Database db, int oldVersion, int newVersion) async {
-  throw new ArgumentError("can't change version from $oldVersion to $newVersion");
+/// to specify during [openDatabase] for [onDowngrade]
+/// Downgrading will always fail
+Future onDatabaseVersionChangeError(
+    Database db, int oldVersion, int newVersion) async {
+  throw new ArgumentError(
+      "can't change version from $oldVersion to $newVersion");
 }
 
-Future __onDatabaseDowngradeDelete(Database db, int oldVersion, int newVersion) async {
+Future __onDatabaseDowngradeDelete(
+    Database db, int oldVersion, int newVersion) async {
   // Implementation is hidden implemented in openDatabase._onDatabaseDowngradeDelete
 }
 // Downgrading will delete the database and open it again
-final OnDatabaseVersionChangeFn onDatabaseDowngradeDelete = __onDatabaseDowngradeDelete;
+final OnDatabaseVersionChangeFn onDatabaseDowngradeDelete =
+    __onDatabaseDowngradeDelete;
 
 ///
 /// Open the database at a given path
 /// setting a version is optional
-/// [onConfigure], [onCreate],  [onUpgrade], [onDowngrade] are called in a transaction
+/// [onCreate],  [onUpgrade], [onDowngrade] are called in a transaction
 ///
-/// [onConfigure] is alled when the database connection is being configured,
+/// [onConfigure] is called when the database connection is being configured,
 /// to enable features such as write-ahead logging or foreign key support.
 /// This method is called before [onCreate], [onUpgrade], [onDowngrade]
-/// [onOpen] are called. It should not modify the database except to configure
-/// the database connection as required.
+///
+/// [onOpen] is called after [onCreate], [onUpgrade], [onDowngrade] are called
 ///
 Future<Database> openDatabase(String path, String password,
         {int version,
@@ -258,6 +284,12 @@ Future<Database> openDatabase(String path, String password,
         onUpgrade: onUpgrade,
         onDowngrade: onDowngrade,
         onOpen: onOpen);
+
+///
+/// Open the database at a given path in read only mode
+///
+Future<Database> openReadOnlyDatabase(String path) =>
+    impl.openReadOnlyDatabase(path);
 
 ///
 /// delete the database at the given path
@@ -277,32 +309,35 @@ Future deleteDatabase(String path) async {
 /// executed (or visible locally) until commit() is called.
 ///
 abstract class Batch {
-  // Commits all of the operations in this batch as a single atomic unit
-  // The result is a list of the result of each operation in the same order
-  // if [noResult] is true, the result list is empty (i.e. the id inserted
-  // the count of item changed is not returned
-  // Will be deprecated for apply
-  // @deprecated
-  Future<List<dynamic>> commit({bool exclusive, bool noResult});
-
   /// Commits all of the operations in this batch as a single atomic unit
   /// The result is a list of the result of each operation in the same order
   /// if [noResult] is true, the result list is empty (i.e. the id inserted
   /// the count of item changed is not returned
-  Future<List<dynamic>> apply({bool exclusive, bool noResult});
+  ///
+  /// Don't use this if you are in a transaction but use
+  /// [Transaction.applyBatch] instead
+  ///
+  /// During [Database.onCreate], [Database.onUpgrade], [Database.onDowngrade]
+  /// we are already in a transaction so it will only be commited when
+  /// the transaction is commited (during open)
+  Future<List<dynamic>> commit({bool exclusive, bool noResult});
 
+  /// See [Batch.commit], kept for compatibility...
+  Future<List<dynamic>> apply({bool exclusive, bool noResult});
 
   /// See [Database.rawInsert]
   void rawInsert(String sql, [List arguments]);
 
   /// See [Database.insert]
-  void insert(String table, Map<String, dynamic> values, {String nullColumnHack, ConflictAlgorithm conflictAlgorithm});
+  void insert(String table, Map<String, dynamic> values,
+      {String nullColumnHack, ConflictAlgorithm conflictAlgorithm});
 
   /// See [Database.rawUpdate]
   void rawUpdate(String sql, [List arguments]);
 
   /// See [Database.update]
-  void update(String table, Map<String, dynamic> values, {String where, List whereArgs, ConflictAlgorithm conflictAlgorithm});
+  void update(String table, Map<String, dynamic> values,
+      {String where, List whereArgs, ConflictAlgorithm conflictAlgorithm});
 
   /// See [Database.rawDelete]
   void rawDelete(String sql, [List arguments]);

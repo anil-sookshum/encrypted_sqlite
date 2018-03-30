@@ -1,7 +1,21 @@
-## 0.8.0
+## 0.8.4
+
+* Add read-only support using `openReadOnlyDatabase`
+
+## 0.8.3
+
+* Allow running a batch during a transaction using `Transaction.applyBatch`
+* Restore `Batch.commit` to use outside a transaction
+
+## 0.8.2
+
+* Although already in a transaction, allow creating nested transactions during open
+ 
+## 0.8.1
 
 * New `Transaction` mechanism not using Zone (old one still supported for now)
 * Start using `Batch.apply` instead of `Batch.commit`
+* Deprecate `Database.inTransaction` and `Database.synchronized` so that Zones are not used anymore
 
 ## 0.7.1
 

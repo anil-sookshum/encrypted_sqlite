@@ -4,14 +4,12 @@ import 'package:sqflite/sqflite.dart';
 import 'package:sqflite/sql.dart';
 import 'test_page.dart';
 
-const String password = 'password';
-
 class ExceptionTestPage extends TestPage {
   ExceptionTestPage() : super("Exception tests") {
     test("Transaction failed", () async {
       //await Sqflite.setDebugModeOn(true);
       String path = await initDeleteDb("transaction_failed.db");
-      Database db = await openDatabase(path, password);
+      Database db = await openDatabase(path);
 
       await db.execute("CREATE TABLE Test (id INTEGER PRIMARY KEY, name TEXT)");
 
@@ -29,7 +27,7 @@ class ExceptionTestPage extends TestPage {
           await txn.execute("DUMMY CALL");
           hasFailed = false;
         });
-      } catch (e) {
+      } on DatabaseException catch (e) {
         // iOS: native_error: PlatformException(sqlite_error, Error Domain=FMDatabase Code=1 "near "DUMMY": syntax error" UserInfo={NSLocalizedDescription=near "DUMMY": syntax error}, null)
         print("native_error: $e");
       }
@@ -42,10 +40,38 @@ class ExceptionTestPage extends TestPage {
       await db.close();
     });
 
+    test("Batch failed", () async {
+      //await Sqflite.setDebugModeOn(true);
+      String path = await initDeleteDb("batch_failed.db");
+      Database db = await openDatabase(path);
+
+      await db.execute("CREATE TABLE Test (id INTEGER PRIMARY KEY, name TEXT)");
+
+      var batch = db.batch();
+      batch.rawInsert("INSERT INTO Test (name) VALUES (?)", ["item"]);
+      batch.execute("DUMMY CALL");
+
+      bool hasFailed = true;
+      try {
+        await batch.apply();
+        hasFailed = false;
+      } on DatabaseException catch (e) {
+        print("native_error: $e");
+      }
+
+      verify(hasFailed);
+
+      int afterCount =
+          Sqflite.firstIntValue(await db.rawQuery("SELECT COUNT(*) FROM Test"));
+      expect(afterCount, 0);
+
+      await db.close();
+    });
+
     test("Sqlite Exception", () async {
       //await Sqflite.setDebugModeOn(true);
       String path = await initDeleteDb("exception.db");
-      Database db = await openDatabase(path, password);
+      Database db = await openDatabase(path);
 
       // Query
       try {
@@ -59,7 +85,7 @@ class ExceptionTestPage extends TestPage {
       try {
         await db.rawQuery("malformed query");
         fail(); // should fail before
-      } catch (e) {
+      } on DatabaseException catch (e) {
         verify(e.isSyntaxError());
       }
 
@@ -89,7 +115,7 @@ class ExceptionTestPage extends TestPage {
 
     test("Open onDowngrade fail", () async {
       String path = await initDeleteDb("open_on_downgrade_fail.db");
-      Database database = await openDatabase(path, password, version: 2,
+      Database database = await openDatabase(path, version: 2,
           onCreate: (Database db, int version) async {
         await db.execute("CREATE TABLE Test(id INTEGER PRIMARY KEY)");
       });
@@ -98,7 +124,7 @@ class ExceptionTestPage extends TestPage {
       // currently this is crashing...
       // should fail going back in versions
       try {
-        database = await openDatabase(path, password,
+        database = await openDatabase(path,
             version: 1, onDowngrade: onDatabaseVersionChangeError);
         verify(false);
       } catch (e) {
@@ -106,7 +132,7 @@ class ExceptionTestPage extends TestPage {
       }
 
       // should work
-      database = await openDatabase(path, password,
+      database = await openDatabase(path,
           version: 2, onDowngrade: onDatabaseVersionChangeError);
       print(database);
       await database.close();
@@ -114,7 +140,7 @@ class ExceptionTestPage extends TestPage {
 
     test("Access after close", () async {
       String path = await initDeleteDb("access_after_close.db");
-      Database database = await openDatabase(path, password, version: 3,
+      Database database = await openDatabase(path, version: 3,
           onCreate: (Database db, int version) async {
         await db.execute("CREATE TABLE Test(id INTEGER PRIMARY KEY)");
       });
@@ -139,7 +165,7 @@ class ExceptionTestPage extends TestPage {
     test("Non escaping fields", () async {
       //await Sqflite.setDebugModeOn(true);
       String path = await initDeleteDb("non_escaping_fields.db");
-      Database db = await openDatabase(path, password);
+      Database db = await openDatabase(path);
 
       String table = "table";
       try {
@@ -182,7 +208,7 @@ class ExceptionTestPage extends TestPage {
           toExclude.add(name);
         }
       }
-      print(JSON.encode(toExclude));
+      print(json.encode(toExclude));
 
       await db.close();
     });

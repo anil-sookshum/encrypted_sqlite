@@ -17,11 +17,15 @@ const String paramNoResult = "noResult";
 // For each operation
 const String paramMethod = "method";
 
-// The database id
+// The database path (string)
 const String paramPath = "path";
 const String paramPassword = "password";
+// The database version (int)
 const String paramVersion = "version";
+// The database id (int)
 const String paramId = "id";
+// When opening the database (bool)
+const String paramReadOnly = "readOnly";
 
 const String paramTable = "table";
 const String paramValues = "values";

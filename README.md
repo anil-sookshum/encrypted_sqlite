@@ -4,7 +4,7 @@ SQLite plugin for [Flutter](https://flutter.io).
 Supports both iOS and Android.
 
 * Support transactions and batches
-* Automatic version management during open
+* Automatic version managment during open
 * Helpers for insert/query/update/delete queries
 * DB operation executed in a background thread on iOS and Android
 
@@ -15,7 +15,7 @@ In your flutter project add the dependency:
 ```yml
 dependencies:
   ...
-  sqflite: any
+  sqflite: '>=0.8.5'
 ```
 
 For help getting started with Flutter, view the online
@@ -39,7 +39,7 @@ Directory documentsDirectory = await getApplicationDocumentsDirectory();
 String path = join(documentsDirectory.path, "demo.db");
 
 // Delete the database
-deleteDatabase(path);
+await deleteDatabase(path);
 
 // open the database
 Database database = await openDatabase(path, version: 1,
@@ -166,6 +166,22 @@ create table $tableTodo (
 }
 ```
 
+### Transaction
+
+Don't use the database but only use the Transaction object in a transaction
+to access the database
+
+```dart
+await database.transaction((txn) async {
+  // Ok
+  await txn.execute("CREATE TABLE Test1 (id INTEGER PRIMARY KEY)");
+  
+  // DON'T  use the database object in a transaction
+  // this will deadlock!
+  await database.execute("CREATE TABLE Test2 (id INTEGER PRIMARY KEY)");
+});
+```
+
 ### Batch support
 
 To avoid ping-pong between dart and native code, you can use `Batch`:
@@ -175,7 +191,7 @@ batch = db.batch();
 batch.insert("Test", {"name": "item"});
 batch.update("Test", {"name": "new_item"}, where: "name = ?", whereArgs: ["item"]);
 batch.delete("Test", where: "name = ?", whereArgs: ["item"]);
-results = await batch.apply();
+results = await batch.commit();
 ```
 
 Getting the result for each operation has a cost (id for insertion and number of changes for
@@ -183,7 +199,19 @@ update and delete), especially on Android where an extra SQL request is executed
 If you don't care about the result and worry about performance in big batches, you can use
 
 ```dart
-await batch.apply(noResult: true);
+await batch.commit(noResult: true);
+```
+
+Warning, during a transaction you should use `Transaction.applyBatch` instead
+
+```dart
+await database.transaction((txn) async {
+  // Ok
+  await txn.applyBatch(batch);
+  
+  // DON'T this will deadlock!
+  await batch.commit();
+});
 ```
 
 ## Table and column names
@@ -214,13 +242,14 @@ db.query("table", columns: ["group"], where: '"group" = ?', whereArgs: ["my_gro
 
 ## Supported SQLite types
 
-No validity check is done on values yet so please avoid non supported types
+No validity check is done on values yet so please avoid non supported types. DateTime is not
+a supported SQL type (https://www.sqlite.org/datatype3.html). Personally I store them as 
+int (millisSinceEpoch) or string (iso8601)
 
 ### INTEGER
 
 * Dart type: `int`
 * Supported values: from -2^63 to 2^63 - 1
-* Android can accept any value
 
 ### REAL
 
