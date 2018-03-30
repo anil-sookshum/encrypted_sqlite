@@ -13,7 +13,7 @@ class DeprecatedTestPage extends TestPage {
     test("Transaction", () async {
       //Sqflite.devSetDebugModeOn(true);
       String path = await initDeleteDb("simple_transaction.db");
-      Database db = await openDatabase(path);
+      Database db = await openDatabase(path, "password");
       await db.execute("CREATE TABLE Test (id INTEGER PRIMARY KEY, name TEXT)");
 
       _test(int i) async {
@@ -41,7 +41,7 @@ class DeprecatedTestPage extends TestPage {
     test("Concurrency 1", () async {
       // Sqflite.devSetDebugModeOn(true);
       String path = await initDeleteDb("simple_concurrency.db");
-      Database db = await openDatabase(path);
+      Database db = await openDatabase(path, "password");
       var step1 = new Completer();
       var step2 = new Completer();
       var step3 = new Completer();
@@ -97,7 +97,7 @@ class DeprecatedTestPage extends TestPage {
     test("Concurrency 2", () async {
       // Sqflite.devSetDebugModeOn(true);
       String path = await initDeleteDb("simple_concurrency.db");
-      Database db = await openDatabase(path);
+      Database db = await openDatabase(path, "password");
       var step1 = new Completer();
       var step2 = new Completer();
 
@@ -151,7 +151,7 @@ class DeprecatedTestPage extends TestPage {
 
     test("Transaction recursive", () async {
       String path = await initDeleteDb("transaction_recursive.db");
-      Database db = await openDatabase(path);
+      Database db = await openDatabase(path, "password");
 
       await db.execute("CREATE TABLE Test (id INTEGER PRIMARY KEY, name TEXT)");
 
@@ -175,11 +175,11 @@ class DeprecatedTestPage extends TestPage {
     test("Transaction open twice", () async {
       //Sqflite.devSetDebugModeOn(true);
       String path = await initDeleteDb("transaction_open_twice.db");
-      Database db = await openDatabase(path);
+      Database db = await openDatabase(path, "password");
 
       await db.execute("CREATE TABLE Test (id INTEGER PRIMARY KEY, name TEXT)");
 
-      Database db2 = await openDatabase(path);
+      Database db2 = await openDatabase(path, "password");
 
       // ignore: deprecated_member_use
       await db.inTransaction(() async {
@@ -222,7 +222,7 @@ class DeprecatedTestPage extends TestPage {
       deleteDatabase(path);
 
       // open the database
-      Database database = await openDatabase(path, version: 1,
+      Database database = await openDatabase(path, "password", version: 1,
           onCreate: (Database db, int version) async {
         // When creating the db, create the table
         await db.execute(
@@ -275,7 +275,7 @@ class DeprecatedTestPage extends TestPage {
     test('BatchQuery', () async {
       // await Sqflite.devSetDebugModeOn();
       String path = await initDeleteDb("batch.db");
-      Database db = await openDatabase(path);
+      Database db = await openDatabase(path, "password");
 
       // empty batch
       Batch batch = db.batch();
@@ -309,7 +309,7 @@ class DeprecatedTestPage extends TestPage {
     test('Batch', () async {
       // await Sqflite.devSetDebugModeOn();
       String path = await initDeleteDb("batch.db");
-      Database db = await openDatabase(path);
+      Database db = await openDatabase(path, "password");
 
       // empty batch
       Batch batch = db.batch();
@@ -388,7 +388,7 @@ class DeprecatedTestPage extends TestPage {
     test("Transaction failed", () async {
       //await Sqflite.setDebugModeOn(true);
       String path = await initDeleteDb("transaction_failed.db");
-      Database db = await openDatabase(path);
+      Database db = await openDatabase(path, "password");
 
       await db.execute("CREATE TABLE Test (id INTEGER PRIMARY KEY, name TEXT)");
 

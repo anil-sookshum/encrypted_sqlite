@@ -5,7 +5,7 @@ import 'package:sqflite/src/database.dart';
 import 'package:sqflite/src/utils.dart';
 
 class MockDatabase extends SqfliteDatabase {
-  MockDatabase() : super(null);
+  MockDatabase() : super(null, 'password');
 
   List<String> methods = [];
   List<String> sqls = [];

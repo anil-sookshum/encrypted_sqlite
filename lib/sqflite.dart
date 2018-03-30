@@ -184,6 +184,8 @@ abstract class Database implements DatabaseExecutor {
   /// The path of the database
   String get path;
 
+  String get password;
+
   /// Close the database. Cannot be access anymore
   Future close();
 
@@ -288,8 +290,8 @@ Future<Database> openDatabase(String path, String password,
 ///
 /// Open the database at a given path in read only mode
 ///
-Future<Database> openReadOnlyDatabase(String path) =>
-    impl.openReadOnlyDatabase(path);
+Future<Database> openReadOnlyDatabase(String path, String password) =>
+    impl.openReadOnlyDatabase(path, password);
 
 ///
 /// delete the database at the given path

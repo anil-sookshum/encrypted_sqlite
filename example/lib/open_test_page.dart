@@ -67,7 +67,7 @@ class OpenCallbacks {
 
   Future<Database> open(String path, {int version}) async {
     reset();
-    return openDatabase(path,
+    return openDatabase(path, "password",
         version: version,
         onConfigure: onConfigure,
         onCreate: onCreate,
@@ -82,7 +82,7 @@ class OpenTestPage extends TestPage {
     test("Delete database", () async {
       //await Sqflite.devSetDebugModeOn(false);
       String path = await initDeleteDb("delete_database.db");
-      Database db = await openDatabase(path);
+      Database db = await openDatabase(path, "password");
       await db.close();
       expect((await new File(path).exists()), true);
       print("Deleting database $path");
@@ -94,7 +94,7 @@ class OpenTestPage extends TestPage {
       //await Sqflite.devSetDebugModeOn(true);
       String path = await initDeleteDb("open_no_version.db");
       expect((await new File(path).exists()), false);
-      Database db = await openDatabase(path);
+      Database db = await openDatabase(path, "password");
       verify(await new File(path).exists());
       await db.close();
     });
@@ -105,7 +105,7 @@ class OpenTestPage extends TestPage {
       verify(!(await new File(path).exists()));
       Database db;
       try {
-        db = await openDatabase(path, onCreate: (Database db, int version) {
+        db = await openDatabase(path, "password", onCreate: (Database db, int version) {
           // never called
           verify(false);
         });
@@ -120,7 +120,7 @@ class OpenTestPage extends TestPage {
       String path = await initDeleteDb("open_test2.db");
       bool onCreate = false;
       bool onCreateTransaction = false;
-      Database db = await openDatabase(path, version: 1,
+      Database db = await openDatabase(path, "password", version: 1,
           onCreate: (Database db, int version) async {
         expect(version, 1);
         onCreate = true;
@@ -139,8 +139,8 @@ class OpenTestPage extends TestPage {
       //await Sqflite.devSetDebugModeOn(true);
       String path1 = await initDeleteDb("open_db_1.db");
       String path2 = await initDeleteDb("open_db_2.db");
-      Database db1 = await openDatabase(path1, version: 1);
-      Database db2 = await openDatabase(path2, version: 1);
+      Database db1 = await openDatabase(path1, "password", version: 1);
+      Database db2 = await openDatabase(path2, "password", version: 1);
       await db1.close();
       await db2.close();
     });
@@ -148,12 +148,12 @@ class OpenTestPage extends TestPage {
     test("Open onUpgrade", () async {
       bool onUpgrade = false;
       String path = await initDeleteDb("open_on_upgrade.db");
-      Database database = await openDatabase(path, version: 1,
+      Database database = await openDatabase(path, "password", version: 1,
           onCreate: (Database db, int version) async {
         await db.execute("CREATE TABLE Test(id INTEGER PRIMARY KEY)");
       });
       await database.close();
-      database = await openDatabase(path, version: 2,
+      database = await openDatabase(path, "password", version: 2,
           onUpgrade: (Database db, int oldVersion, int newVersion) async {
         expect(oldVersion, 1);
         expect(newVersion, 2);
@@ -166,7 +166,7 @@ class OpenTestPage extends TestPage {
 
     test("Open onDowngrade", () async {
       String path = await initDeleteDb("open_on_downgrade.db");
-      Database database = await openDatabase(path, version: 2,
+      Database database = await openDatabase(path, "password", version: 2,
           onCreate: (Database db, int version) async {
         await db.execute("CREATE TABLE Test(id INTEGER PRIMARY KEY)");
       }, onDowngrade: (Database db, int oldVersion, int newVersion) async {
@@ -175,7 +175,7 @@ class OpenTestPage extends TestPage {
       await database.close();
 
       bool onDowngrade = false;
-      database = await openDatabase(path, version: 1,
+      database = await openDatabase(path, "password", version: 1,
           onDowngrade: (Database db, int oldVersion, int newVersion) async {
         expect(oldVersion, 2);
         expect(newVersion, 1);
@@ -189,7 +189,7 @@ class OpenTestPage extends TestPage {
 
     test("Open bad path", () async {
       try {
-        await openDatabase("/invalid_path");
+        await openDatabase("/invalid_path", "password");
         fail();
       } on DatabaseException catch (e) {
         verify(e.isOpenFailedError());
@@ -211,7 +211,7 @@ class OpenTestPage extends TestPage {
       await new File(path).writeAsBytes(bytes);
 
       // open the database
-      Database db = await openDatabase(path);
+      Database db = await openDatabase(path, "password");
 
       // Our database as a single table with a single element
       List<Map<String, dynamic>> list = await db.rawQuery("SELECT * FROM Test");
@@ -235,7 +235,7 @@ class OpenTestPage extends TestPage {
         });
       }
 
-      var db = await openDatabase(path, onConfigure: _onConfigure);
+      var db = await openDatabase(path, "password", onConfigure: _onConfigure);
       expect(onConfigured, true);
       expect(onConfiguredTransaction, true);
 
@@ -246,7 +246,7 @@ class OpenTestPage extends TestPage {
       // await Sqflite.devSetDebugModeOn(false);
 
       String path = await initDeleteDb("open_on_downgrade_delete.db");
-      Database database = await openDatabase(path, version: 3,
+      Database database = await openDatabase(path, "password", version: 3,
           onCreate: (Database db, int version) async {
         await db.execute("CREATE TABLE Test(id INTEGER PRIMARY KEY)");
       });
@@ -259,7 +259,7 @@ class OpenTestPage extends TestPage {
       // since the database is re-opened
       bool onConfigured = false;
       database =
-          await openDatabase(path, version: 2, onConfigure: (Database db) {
+          await openDatabase(path, "password", version: 2, onConfigure: (Database db) {
         // Must not be configured nor created yet
         verify(!onConfigured);
         verify(!onCreated);
@@ -288,7 +288,7 @@ class OpenTestPage extends TestPage {
       onCreated = false;
       onOpened = false;
 
-      database = await openDatabase(path, version: 2,
+      database = await openDatabase(path, "password", version: 2,
           onCreate: (Database db, int version) {
         expect(false, "should not be called");
       }, onOpen: (Database db) {
@@ -370,7 +370,7 @@ class OpenTestPage extends TestPage {
         await batch.commit();
       }
 
-      var db = await openDatabase(path,
+      var db = await openDatabase(path, "password",
           version: 1,
           onConfigure: _onConfigure,
           onCreate: _onCreate,
@@ -393,14 +393,14 @@ class OpenTestPage extends TestPage {
         await batch.commit();
       }
 
-      var db = await openDatabase(path, version: 1, onCreate: _onCreate);
+      var db = await openDatabase(path, "password", version: 1, onCreate: _onCreate);
       expect(
           Sqflite.firstIntValue(await db.rawQuery("SELECT COUNT(*) FROM Test")),
           1);
 
       await db.close();
 
-      db = await openReadOnlyDatabase(path);
+      db = await openReadOnlyDatabase(path, 'password');
       expect(
           Sqflite.firstIntValue(await db.rawQuery("SELECT COUNT(*) FROM Test")),
           1);
@@ -430,7 +430,7 @@ class OpenTestPage extends TestPage {
           await db.execute("PRAGMA foreign_keys = ON");
         }
 
-        var db = await openDatabase(path, onConfigure: _onConfigure);
+        var db = await openDatabase(path, "password", onConfigure: _onConfigure);
         await db.close();
       }
 
@@ -447,7 +447,7 @@ class OpenTestPage extends TestPage {
         }
 
         // Special callback used for onDowngrade here to recreate the database
-        var db = await openDatabase(path,
+        var db = await openDatabase(path, "password",
             version: 1,
             onCreate: _onCreate,
             onUpgrade: _onUpgrade,
@@ -462,7 +462,7 @@ class OpenTestPage extends TestPage {
         }
 
         var db = await openDatabase(
-          path,
+          path, "password",
           onOpen: _onOpen,
         );
         await db.close();

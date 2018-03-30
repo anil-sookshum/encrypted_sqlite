@@ -11,7 +11,7 @@ class SqfliteTransaction extends SqfliteDatabaseExecutor
   @override
   SqfliteDatabase get db => database;
 
-  bool successful;
+  bool successfull;
 
   SqfliteTransaction(this.database);
 

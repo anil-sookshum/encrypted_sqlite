@@ -144,7 +144,8 @@ abstract class SqfliteDatabaseExecutor implements DatabaseExecutor {
 
 class SqfliteDatabase extends SqfliteDatabaseExecutor implements Database {
   bool readOnly;
-  SqfliteDatabase(this._path);
+  String _password;
+  SqfliteDatabase(this._path, this._password);
 
   // will be removed once writeSynchronized and synchronized are removed
 
@@ -163,6 +164,10 @@ class SqfliteDatabase extends SqfliteDatabaseExecutor implements Database {
   @override
   String get path => _path;
   String _path;
+
+  @override
+  String get password => _password;
+
 
   // only set during inTransaction to allow recursivity in transactions
   int transactionRefCount = 0;
@@ -457,7 +462,7 @@ class SqfliteDatabase extends SqfliteDatabaseExecutor implements Database {
   Future<int> _openDatabase() {
     return wrapDatabaseException<int>(() {
       return invokeMethod<int>(
-          methodOpenDatabase, <String, dynamic>{paramPath: path});
+          methodOpenDatabase, <String, dynamic>{paramPath: path, paramPassword:password});
     });
   }
 
@@ -471,7 +476,7 @@ class SqfliteDatabase extends SqfliteDatabaseExecutor implements Database {
   Future<Database> openReadOnlyDatabase() async {
     id = await wrapDatabaseException<int>(() {
       return invokeMethod<int>(methodOpenDatabase,
-          <String, dynamic>{paramPath: path, paramReadOnly: true});
+          <String, dynamic>{paramPath: path, paramPassword:password, paramReadOnly: true});
     });
     readOnly = true;
     return this;
@@ -599,14 +604,14 @@ class SqfliteDatabase extends SqfliteDatabaseExecutor implements Database {
   }
 }
 
-Future<Database> openDatabase(String path,
+Future<Database> openDatabase(String path, String password,
     {int version,
     OnDatabaseConfigureFn onConfigure,
     OnDatabaseCreateFn onCreate,
     OnDatabaseVersionChangeFn onUpgrade,
     OnDatabaseVersionChangeFn onDowngrade,
     OnDatabaseOpenFn onOpen}) {
-  SqfliteDatabase database = new SqfliteDatabase(path);
+  SqfliteDatabase database = new SqfliteDatabase(path, password);
   return database.open(
       version: version,
       onConfigure: onConfigure,
@@ -616,7 +621,7 @@ Future<Database> openDatabase(String path,
       onOpen: onOpen);
 }
 
-Future<Database> openReadOnlyDatabase(String path) {
-  SqfliteDatabase database = new SqfliteDatabase(path);
+Future<Database> openReadOnlyDatabase(String path, String password) {
+  SqfliteDatabase database = new SqfliteDatabase(path, password);
   return database.openReadOnlyDatabase();
 }

@@ -477,7 +477,8 @@ NSInteger _databaseOpenCount = 0;
 //
 - (void)handleOpenDatabaseCall:(FlutterMethodCall*)call result:(FlutterResult)result {
     NSString* path = call.arguments[_paramPath];
-    NSString *password = call.arguments[_paramPassword];
+    NSString* password = call.arguments[_paramPassword];
+    NSNumber* readOnlyValue = call.arguments[_paramReadOnly];
     bool readOnly = [readOnlyValue boolValue];
 
     if (_log) {
