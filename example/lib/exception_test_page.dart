@@ -1,13 +1,15 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:sqflite/sqflite.dart';
 import 'package:sqflite/sql.dart';
+
 import 'test_page.dart';
 
 class ExceptionTestPage extends TestPage {
   ExceptionTestPage() : super("Exception tests") {
     test("Transaction failed", () async {
-      //await Sqflite.setDebugModeOn(true);
+      //await Sqflite.devSetDebugModeOn(true);
       String path = await initDeleteDb("transaction_failed.db");
       Database db = await openDatabase(path, "password");
 
@@ -41,7 +43,7 @@ class ExceptionTestPage extends TestPage {
     });
 
     test("Batch failed", () async {
-      //await Sqflite.setDebugModeOn(true);
+      //await Sqflite.devSetDebugModeOn(true);
       String path = await initDeleteDb("batch_failed.db");
       Database db = await openDatabase(path, "password");
 
@@ -69,7 +71,7 @@ class ExceptionTestPage extends TestPage {
     });
 
     test("Sqlite Exception", () async {
-      //await Sqflite.setDebugModeOn(true);
+      // await Sqflite.devSetDebugModeOn(true);
       String path = await initDeleteDb("exception.db");
       Database db = await openDatabase(path, "password");
 
@@ -79,6 +81,7 @@ class ExceptionTestPage extends TestPage {
         fail(); // should fail before
       } on DatabaseException catch (e) {
         verify(e.isNoSuchTableError("Test"));
+        // Error Domain=FMDatabase Code=1 "no such table: Test" UserInfo={NSLocalizedDescription=no such table: Test})
       }
 
       // Catch without using on DatabaseException
@@ -87,13 +90,28 @@ class ExceptionTestPage extends TestPage {
         fail(); // should fail before
       } on DatabaseException catch (e) {
         verify(e.isSyntaxError());
+        //verify(e.toString().contains("sql 'malformed query' args"));
+        // devPrint(e);
+      }
+
+      try {
+        await db.rawQuery("malformed query with args ?", [1]);
+        fail(); // should fail before
+      } on DatabaseException catch (e) {
+        verify(e.isSyntaxError());
+        print(e);
+        verify(e
+            .toString()
+            .contains("sql 'malformed query with args ?' args [1]"));
       }
 
       try {
         await db.execute("DUMMY");
         fail(); // should fail before
-      } on DatabaseException catch (e) {
-        verify(e.isSyntaxError());
+      } on Exception catch (e) {
+        //verify(e.isSyntaxError());
+        print(e);
+        verify(e.toString().contains("sql 'DUMMY'"));
       }
 
       try {
@@ -101,6 +119,7 @@ class ExceptionTestPage extends TestPage {
         fail(); // should fail before
       } on DatabaseException catch (e) {
         verify(e.isSyntaxError());
+        verify(e.toString().contains("sql 'DUMMY'"));
       }
 
       try {
@@ -108,6 +127,127 @@ class ExceptionTestPage extends TestPage {
         fail(); // should fail before
       } on DatabaseException catch (e) {
         verify(e.isSyntaxError());
+        verify(e.toString().contains("sql 'DUMMY'"));
+      }
+
+      await db.close();
+    });
+
+    test("Sqlite constraint Exception", () async {
+      // await Sqflite.devSetDebugModeOn(true);
+      String path = await initDeleteDb("constraint_exception.db");
+      Database db =
+          await openDatabase(path, version: 1, onCreate: (db, version) {
+        db.execute("CREATE TABLE Test (name TEXT UNIQUE)");
+      });
+      await db.insert("Test", {"name": "test1"});
+
+      try {
+        await db.insert("Test", {"name": "test1"});
+      } on DatabaseException catch (e) {
+        // iOS: Error Domain=FMDatabase Code=19 "UNIQUE constraint failed: Test.name" UserInfo={NSLocalizedDescription=UNIQUE constraint failed: Test.name}) s
+        // Android: UNIQUE constraint failed: Test.name (code 2067))
+        print(e);
+        verify(e.isUniqueConstraintError());
+        verify(e.isUniqueConstraintError("Test.name"));
+      }
+
+      await db.close();
+    });
+
+    test("Sqlite constraint primary key", () async {
+      // await Sqflite.devSetDebugModeOn(true);
+      String path = await initDeleteDb("constraint_primary_key_exception.db");
+      Database db =
+          await openDatabase(path, version: 1, onCreate: (db, version) {
+        db.execute("CREATE TABLE Test (name TEXT PRIMARY KEY)");
+      });
+      await db.insert("Test", {"name": "test1"});
+
+      try {
+        await db.insert("Test", {"name": "test1"});
+      } on DatabaseException catch (e) {
+        // iOS: Error Domain=FMDatabase Code=19 "UNIQUE constraint failed: Test.name" UserInfo={NSLocalizedDescription=UNIQUE constraint failed: Test.name}) s
+        // Android: UNIQUE constraint failed: Test.name (code 1555))
+        print(e);
+        verify(e.isUniqueConstraintError());
+        verify(e.isUniqueConstraintError("Test.name"));
+      }
+
+      await db.close();
+    });
+
+    test("Sqlite batch Exception", () async {
+      // await Sqflite.devSetDebugModeOn(true);
+      String path = await initDeleteDb("batch_exception.db");
+      Database db = await openDatabase(path);
+
+      // Query
+      try {
+        var batch = db.batch();
+        batch.rawQuery("SELECT COUNT(*) FROM Test");
+        await batch.commit();
+        fail(); // should fail before
+      } on DatabaseException catch (e) {
+        print(e);
+        verify(e.isNoSuchTableError("Test"));
+      }
+
+      // Catch without using on DatabaseException
+      try {
+        var batch = db.batch();
+        batch.rawQuery("malformed query");
+        await batch.commit();
+        fail(); // should fail before
+      } on DatabaseException catch (e) {
+        verify(e.isSyntaxError());
+        print(e);
+        verify(e.toString().contains("sql 'malformed query'"));
+      }
+
+      try {
+        var batch = db.batch();
+        batch.rawQuery("malformed query with args ?", [1]);
+        await batch.commit();
+        fail(); // should fail before
+      } on DatabaseException catch (e) {
+        verify(e.isSyntaxError());
+        print(e);
+        verify(e
+            .toString()
+            .contains("sql 'malformed query with args ?' args [1]"));
+      }
+
+      try {
+        var batch = db.batch();
+        batch.execute("DUMMY");
+        await batch.commit();
+        fail(); // should fail before
+      } on DatabaseException catch (e) {
+        verify(e.isSyntaxError());
+        // devPrint(e);
+        // iOS Error Domain=FMDatabase Code=1 "near "DUMMY": syntax error" UserInfo={NSLocalizedDescription=near "DUMMY": syntax error})
+        verify(e.toString().contains("sql 'DUMMY'"));
+      }
+
+      try {
+        var batch = db.batch();
+        batch.rawInsert("DUMMY");
+        await batch.commit();
+        fail(); // should fail before
+      } on DatabaseException catch (e) {
+        verify(e.isSyntaxError());
+        verify(e.toString().contains("sql 'DUMMY'"));
+      }
+
+      try {
+        var batch = db.batch();
+        batch.rawUpdate("DUMMY");
+        await batch.commit();
+        fail(); // should fail before
+      } on DatabaseException catch (e) {
+        verify(e.isSyntaxError());
+        verify(e.toString().contains("sql 'DUMMY'"));
       }
 
       await db.close();
@@ -139,6 +279,7 @@ class ExceptionTestPage extends TestPage {
     });
 
     test("Access after close", () async {
+      // await Sqflite.devSetDebugModeOn(true);
       String path = await initDeleteDb("access_after_close.db");
       Database database = await openDatabase(path, "password", version: 3,
           onCreate: (Database db, int version) async {
@@ -163,7 +304,7 @@ class ExceptionTestPage extends TestPage {
     });
 
     test("Non escaping fields", () async {
-      //await Sqflite.setDebugModeOn(true);
+      //await Sqflite.devSetDebugModeOn(true);
       String path = await initDeleteDb("non_escaping_fields.db");
       Database db = await openDatabase(path, "password");
 
@@ -209,6 +350,108 @@ class ExceptionTestPage extends TestPage {
         }
       }
       print(json.encode(toExclude));
+
+      await db.close();
+    });
+
+    test("Bind no argument (no iOS)", () async {
+      if (!Platform.isIOS) {
+        // await Sqflite.devSetDebugModeOn(true);
+        String path = await initDeleteDb("bind_no_arg_failed.db");
+        Database db = await openDatabase(path);
+
+        await db.execute("CREATE TABLE Test (name TEXT)");
+
+        await db.rawInsert("INSERT INTO Test (name) VALUES (\"?\")", []);
+
+        await db.rawQuery("SELECT * FROM Test WHERE name = ?", []);
+
+        await db.rawDelete("DELETE FROM Test WHERE name = ?", []);
+
+        await db.close();
+      }
+    });
+
+    test("crash ios (no iOS)", () async {
+      // This crashes natively on iOS...can't catch it yet
+      if (!Platform.isIOS) {
+        //if (true) {
+        // await Sqflite.devSetDebugModeOn(true);
+        String path = await initDeleteDb("bind_no_arg_failed.db");
+        Database db = await openDatabase(path);
+
+        await db.execute("CREATE TABLE Test (name TEXT)");
+
+        await db.rawInsert("INSERT INTO Test (name) VALUES (\"?\")", []);
+
+        await db.rawQuery("SELECT * FROM Test WHERE name = ?", []);
+
+        await db.close();
+      }
+    });
+
+    test("Bind null argument", () async {
+      // await Sqflite.devSetDebugModeOn(true);
+      String path = await initDeleteDb("bind_null_failed.db");
+      Database db = await openDatabase(path);
+
+      await db.execute("CREATE TABLE Test (name TEXT)");
+
+      //await db.rawInsert("INSERT INTO Test (name) VALUES (\"?\")", [null]);
+      try {
+        await db.rawInsert("INSERT INTO Test (name) VALUES (?)", [null]);
+      } on DatabaseException catch (e) {
+        print("ERR: $e");
+        expect(e.toString().contains("sql 'INSERT"), true);
+      }
+
+      try {
+        await db.rawQuery("SELECT * FROM Test WHERE name = ?", [null]);
+      } on DatabaseException catch (e) {
+        print("ERR: $e");
+        expect(e.toString().contains("sql 'SELECT * FROM Test"), true);
+      }
+
+      try {
+        await db.rawDelete("DELETE FROM Test WHERE name = ?", [null]);
+      } on DatabaseException catch (e) {
+        print("ERR: $e");
+        expect(e.toString().contains("sql 'DELETE FROM Test"), true);
+      }
+
+      await db.close();
+    });
+
+    test("Bind no parameter", () async {
+      // await Sqflite.devSetDebugModeOn(true);
+      String path = await initDeleteDb("bind_no_parameter_failed.db");
+      Database db = await openDatabase(path);
+
+      await db.execute("CREATE TABLE Test (name TEXT)");
+
+      try {
+        await db.rawInsert(
+            "INSERT INTO Test (name) VALUES (\"value\")", ["value2"]);
+      } on DatabaseException catch (e) {
+        print("ERR: $e");
+        expect(e.toString().contains("sql 'INSERT INTO Test"), true);
+      }
+
+      try {
+        await db
+            .rawQuery("SELECT * FROM Test WHERE name = \"value\"", ["value2"]);
+      } on DatabaseException catch (e) {
+        print("ERR: $e");
+        expect(e.toString().contains("sql 'SELECT * FROM Test"), true);
+      }
+
+      try {
+        await db
+            .rawDelete("DELETE FROM Test WHERE name = \"value\"", ["value2"]);
+      } on DatabaseException catch (e) {
+        print("ERR: $e");
+        expect(e.toString().contains("sql 'DELETE FROM Test"), true);
+      }
 
       await db.close();
     });

@@ -27,7 +27,9 @@ class TestPage extends StatefulWidget {
       try {
         await new Directory(dirname(path)).create(recursive: true);
       } catch (e) {
-        print(e);
+        if (!await new Directory(dirname(path)).exists()) {
+          print(e);
+        }
       }
     }
     return path;
@@ -38,6 +40,16 @@ class TestPage extends StatefulWidget {
 
   test(String name, Func0<FutureOr> fn) {
     tests.add(new Test(name, fn));
+  }
+
+  @Deprecated("SOLO_TEST - On purpose to remove before checkin")
+  void solo_test(String name, Func0<FutureOr> fn) {
+    tests.add(new Test(name, fn, solo: true));
+  }
+
+  @Deprecated("SKIP_TEST - On purpose to remove before checkin")
+  void skip_test(String name, Func0<FutureOr> fn) {
+    tests.add(new Test(name, fn, skip: true));
   }
 
   // Thrown an exception
@@ -64,6 +76,7 @@ expect(dynamic value, dynamic expected, {String reason}) {
 }
 
 bool verify(bool condition, [String message]) {
+  message ??= "verify failed";
   if (condition == null) {
     throw new Exception('"$message" null condition');
   }
@@ -73,7 +86,30 @@ bool verify(bool condition, [String message]) {
   return condition;
 }
 
-class _TestPageState extends State<TestPage> {
+abstract class Group {
+  List<Test> get tests;
+
+  bool _hasSolo;
+  List<Test> _tests = [];
+
+  void add(Test test) {
+    if (!test.skip) {
+      if (test.solo) {
+        if (_hasSolo != true) {
+          _hasSolo = true;
+          _tests.clear();
+        }
+        _tests.add(test);
+      } else if (_hasSolo != true) {
+        _tests.add(test);
+      }
+    }
+  }
+
+  bool get hasSolo => _hasSolo;
+}
+
+class _TestPageState extends State<TestPage> with Group {
   int get _itemCount => items.length;
 
   List<Item> items = [];
@@ -86,9 +122,13 @@ class _TestPageState extends State<TestPage> {
     setState(() {
       items.clear();
     });
-
+    _tests.clear();
     for (Test test in widget.tests) {
+      add(test);
+    }
+    for (Test test in _tests) {
       Item item = new Item("${test.name}");
+
       int position;
       setState(() {
         position = items.length;
@@ -118,7 +158,7 @@ class _TestPageState extends State<TestPage> {
       return null;
     }
 
-    Test test = widget.tests[index];
+    Test test = _tests[index];
 
     Item item = items[index];
     setState(() {
@@ -186,4 +226,7 @@ class _TestPageState extends State<TestPage> {
   Item getItem(int index) {
     return items[index];
   }
+
+  @override
+  List<Test> get tests => widget.tests;
 }

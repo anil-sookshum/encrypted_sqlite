@@ -22,3 +22,28 @@ analyzer:
   strong-mode:
     implicit-casts: false
 ```
+
+# Common issues
+
+## Cast error
+
+```
+Unhandled exception: type '_InternalLinkedHashMap' is not a subtype of type 'Map<String, dynamic>'
+ where
+  _InternalLinkedHashMap is from dart:collection
+  Map is from dart:core
+  String is from dart:core
+```
+
+Make sure you create object of type `Map<String, dynamic>` and not simply `Map` for records you
+insert and update. The option `implicit-casts: false` explained above helps to find such issues
+
+## Debugging SQL commands
+
+A quick way to view SQL commands printed out is to call before opening any database
+
+```dart
+await Sqflite.devSetDebugModeOn(true);
+```
+
+This call is on purpose deprecated to force removing it once the SQL issues has been resolved.

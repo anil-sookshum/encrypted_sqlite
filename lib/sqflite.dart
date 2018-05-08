@@ -241,7 +241,7 @@ abstract class Database implements DatabaseExecutor {
 
 typedef FutureOr OnDatabaseVersionChangeFn(
     Database db, int oldVersion, int newVersion);
-typedef FutureOr OnDatabaseCreateFn(Database db, int newVersion);
+typedef FutureOr OnDatabaseCreateFn(Database db, int version);
 typedef FutureOr OnDatabaseOpenFn(Database db);
 typedef FutureOr OnDatabaseConfigureFn(Database db);
 
@@ -299,8 +299,9 @@ Future<Database> openReadOnlyDatabase(String path, String password) =>
 Future deleteDatabase(String path) async {
   try {
     await new File(path).delete(recursive: true);
-  } catch (e) {
-    print(e);
+  } catch (_e) {
+    // 0.8.4
+    // print(e);
   }
 }
 

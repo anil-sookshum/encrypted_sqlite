@@ -8,9 +8,11 @@ import android.os.HandlerThread;
 import android.util.Log;
 
 import com.tekartik.sqflite.operation.BatchOperation;
+import com.tekartik.sqflite.operation.ExecuteOperation;
 import com.tekartik.sqflite.operation.MethodCallOperation;
 import com.tekartik.sqflite.operation.Operation;
 import com.tekartik.sqflite.operation.OperationResult;
+import com.tekartik.sqflite.operation.SqlErrorInfo;
 
 import net.sqlcipher.SQLException;
 import net.sqlcipher.database.SQLiteDatabase;
@@ -51,8 +53,6 @@ import static com.tekartik.sqflite.Constant.PARAM_SQL_ARGUMENTS;
  * SqflitePlugin Android implementation
  */
 public class SqflitePlugin implements MethodCallHandler {
-
-    //private MethodChannel channel;
 
     static private boolean LOGV = false;
     static private boolean _EXTRA_LOGV = false; // to set to true for type debugging
@@ -122,7 +122,7 @@ public class SqflitePlugin implements MethodCallHandler {
     public static void registerWith(Registrar registrar) {
         SQLiteDatabase.loadLibs(registrar.context());
         final MethodChannel channel = new MethodChannel(registrar.messenger(), "com.tekartik.sqflite");
-        channel.setMethodCallHandler(new SqflitePlugin(registrar.activity().getApplicationContext()));
+        channel.setMethodCallHandler(new SqflitePlugin(registrar.context().getApplicationContext()));
     }
 
     private static Object cursorValue(Cursor cursor, int index) {
@@ -182,17 +182,6 @@ public class SqflitePlugin implements MethodCallHandler {
         }
         return map;
     }
-
-    /*
-    private Long getLong(Object value) {
-        if (value instanceof Long) {
-            return (Long) value;
-        } else if (value instanceof Integer) {
-            return ((Integer) value).longValue();
-        }
-        return null;
-    }
-    */
 
     private Database getDatabase(int databaseId) {
         return databaseMap.get(databaseId);
@@ -305,12 +294,14 @@ public class SqflitePlugin implements MethodCallHandler {
         return executeOrError(database, sql, arguments, result);
     }
 
+    /*
     private Database executeOrError(Database database, Map<String, Object> operation, Result result) {
         String sql = (String) operation.get(PARAM_SQL);
         @SuppressWarnings("unchecked")
         List<Object> arguments = (List<Object>) operation.get(PARAM_SQL_ARGUMENTS);
         return executeOrError(database, sql, arguments, result);
     }
+    */
 
     private boolean executeOrError(Database database, Operation operation) {
         String sql = operation.getSql();
@@ -322,7 +313,7 @@ public class SqflitePlugin implements MethodCallHandler {
         try {
             database.getWritableDatabase().execSQL(sql, sqlArguments);
             return true;
-        } catch (SQLException exception) {
+        } catch (Exception exception) {
             handleException(exception, operation, database);
             return false;
         }
@@ -335,8 +326,9 @@ public class SqflitePlugin implements MethodCallHandler {
         }
         try {
             database.getWritableDatabase().execSQL(sql, sqlArguments);
-        } catch (SQLException exception) {
-            handleException(exception, result, database);
+        } catch (Exception exception) {
+            Operation operation = new ExecuteOperation(result, sql, arguments);
+            handleException(exception, operation, database);
             return null;
         }
         return database;
@@ -483,8 +475,7 @@ public class SqflitePlugin implements MethodCallHandler {
             }
             operation.success(null);
             return true;
-        } catch (
-                SQLException exception) {
+        } catch (Exception exception) {
             handleException(exception, operation, database);
             return false;
         } finally {
@@ -540,7 +531,7 @@ public class SqflitePlugin implements MethodCallHandler {
             }
             return true;
 
-        } catch (SQLException exception) {
+        } catch (Exception exception) {
             handleException(exception, operation, database);
             return false;
         } finally {
@@ -620,7 +611,7 @@ public class SqflitePlugin implements MethodCallHandler {
             }
             operation.success(null);
             return true;
-        } catch (SQLException e) {
+        } catch (Exception e) {
             handleException(e, operation, database);
             return false;
         } finally {
@@ -652,8 +643,16 @@ public class SqflitePlugin implements MethodCallHandler {
     @Deprecated
     private boolean handleException(SQLException exception, Result result, String path) {
         result.error(Constant.SQLITE_ERROR, exception.getMessage(), path);
+    private boolean handleException(Exception exception, Operation operation, Database database) {
+        if (exception instanceof SQLiteCantOpenDatabaseException) {
+            operation.error(Constant.SQLITE_ERROR, Constant.ERROR_OPEN_FAILED + " " + database.path, null);
+            return true;
+        } else if (exception instanceof SQLException) {
+            operation.error(Constant.SQLITE_ERROR, exception.getMessage(), SqlErrorInfo.getMap(operation));
+            return true;
+        }
+        operation.error(Constant.SQLITE_ERROR, exception.getMessage(), SqlErrorInfo.getMap(operation));
         return true;
-    }
 
     private boolean handleException(SQLException exception, Result result, Database database) {
         return handleException(exception, result, database.path);
@@ -695,8 +694,9 @@ public class SqflitePlugin implements MethodCallHandler {
             } else {
                 database.open();
             }
-        } catch (SQLException e) {
-            if (handleException(e, result, path)) return;
+        } catch (Exception e) {
+            MethodCallOperation operation = new MethodCallOperation(call, result);
+            if (handleException(e, operation, database)) return;
             throw e;
         }
 

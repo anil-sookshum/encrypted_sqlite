@@ -1,10 +1,12 @@
 import 'dart:async';
+
 import 'package:flutter/services.dart';
 import 'package:sqflite/src/constant.dart';
 
 // Wrap sqlite native exception
-class DatabaseException implements Exception {
+abstract class DatabaseException implements Exception {
   String _message;
+
   DatabaseException(this._message);
 
   @override
@@ -21,7 +23,7 @@ class DatabaseException implements Exception {
     return false;
   }
 
-  bool isSyntaxError([String table]) {
+  bool isSyntaxError() {
     if (_message != null) {
       return _message.contains("syntax error");
     }
@@ -42,11 +44,75 @@ class DatabaseException implements Exception {
     return false;
   }
 
-  isReadOnlyError() {
+  bool isReadOnlyError() {
     if (_message != null) {
       return _message.contains("readonly");
     }
     return false;
+  }
+
+  bool isUniqueConstraintError([String field]) {
+    if (_message != null) {
+      String expected = "UNIQUE constraint failed: ";
+      if (field != null) {
+        expected += field;
+      }
+      return _message.toLowerCase().contains(expected.toLowerCase());
+    }
+    return false;
+  }
+}
+
+class SqfliteDatabaseException extends DatabaseException {
+  dynamic result;
+
+  @override
+  String toString() {
+    if (result is Map) {
+      if (result[paramSql] != null) {
+        var args = result[paramSqlArguments];
+        if (args == null) {
+          return "DatabaseException($_message) sql '${result[paramSql]}'";
+        } else {
+          return "DatabaseException($_message) sql '${result[paramSql]}' args ${args}}";
+        }
+      }
+    }
+    return super.toString();
+  }
+
+  SqfliteDatabaseException(String message, this.result) : super(message);
+
+  /// Parse the sqlite native message to extract the code
+  /// See https://www.sqlite.org/rescode.html for the list of result code
+  int getResultCode() {
+    String message = _message.toLowerCase();
+    int findCode(String patternPrefix) {
+      int index = message.indexOf(patternPrefix);
+      if (index != -1) {
+        String code = message.substring(index + patternPrefix.length);
+        int endIndex = code.indexOf(")");
+        if (endIndex != -1) {
+          try {
+            int resultCode = int.parse(code.substring(0, endIndex));
+            if (resultCode != null) {
+              return resultCode;
+            }
+          } catch (_) {}
+        }
+      }
+      return null;
+    }
+
+    int code = findCode("(sqlite code ");
+    if (code != null) {
+      return code;
+    }
+    code = findCode("(code ");
+    if (code != null) {
+      return code;
+    }
+    return null;
   }
 }
 
@@ -56,7 +122,7 @@ Future<T> wrapDatabaseException<T>(Future<T> action()) async {
     return result;
   } on PlatformException catch (e) {
     if (e.code == sqliteErrorCode) {
-      throw new DatabaseException(e.message);
+      throw new SqfliteDatabaseException(e.message, e.details);
       //rethrow;
     } else {
       rethrow;

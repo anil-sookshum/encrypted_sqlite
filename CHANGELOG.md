@@ -1,3 +1,17 @@
+## 0.8.9
+
+* Upgrade to sdk 27
+
+## 0.8.8
+
+* Allow testing for constraint exception
+
+## 0.8.6
+
+* better sql error report
+* catch android native errors
+* no longer print an error when deleting a database fails
+
 ## 0.8.4
 
 * Add read-only support using `openReadOnlyDatabase`

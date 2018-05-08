@@ -256,5 +256,57 @@ class ExpTestPage extends TestPage {
     }
     return rawResult;
     */
+    test("Issue#48", () async {
+      // Sqflite.devSetDebugModeOn(true);
+      // devPrint("issue #48");
+      // Try to query on a non-indexed field
+      String path = await initDeleteDb("exp_issue_48.db");
+      Database db = await openDatabase(path, version: 1,
+          onCreate: (Database db, int version) async {
+        await db
+            .execute("CREATE TABLE npa (id INT, title TEXT, identifier TEXT)");
+        await db.insert(
+            "npa", {"id": 128, "title": "title 1", "identifier": "0001"});
+        await db.insert("npa",
+            {"id": 215, "title": "title 1", "identifier": "0008120150514"});
+      });
+      var resultSet = await db.query("npa",
+          columns: ["id", "title", "identifier"],
+          where: '"identifier" = ?',
+          whereArgs: ["0008120150514"]);
+      // print(resultSet);
+      expect(resultSet.length, 1);
+      // but the results is always - empty QueryResultSet[].
+      // If i'm trying to do the same with the id field and integer value like
+      resultSet = await db.query("npa",
+          columns: ["id", "title", "identifier"],
+          where: '"id" = ?',
+          whereArgs: [215]);
+      // print(resultSet);
+      expect(resultSet.length, 1);
+      await db.close();
+    });
+
+    test("Issue#52", () async {
+      // Sqflite.devSetDebugModeOn(true);
+      // Try to insert string with quote
+      String path = await initDeleteDb("exp_issue_52.db");
+      Database db = await openDatabase(path, version: 1,
+          onCreate: (Database db, int version) async {
+        await db.execute("CREATE TABLE test (id INT, value TEXT)");
+        await db.insert("test", {"id": 1, "value": 'without quote'});
+        await db.insert("test", {"id": 2, "value": 'with " quote'});
+      });
+      var resultSet = await db
+          .query("test", where: 'value = ?', whereArgs: ['with " quote']);
+      expect(resultSet.length, 1);
+      expect(resultSet.first['id'], 2);
+
+      resultSet = await db
+          .rawQuery('SELECT * FROM test WHERE value = ?', ['with " quote']);
+      expect(resultSet.length, 1);
+      expect(resultSet.first['id'], 2);
+      await db.close();
+    });
   }
 }
