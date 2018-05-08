@@ -3,6 +3,7 @@ package com.tekartik.sqflite;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.database.Cursor;
+import android.database.sqlite.SQLiteCantOpenDatabaseException;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.util.Log;
@@ -640,27 +641,17 @@ public class SqflitePlugin implements MethodCallHandler {
         });
     }
 
-    @Deprecated
-    private boolean handleException(SQLException exception, Result result, String path) {
-        result.error(Constant.SQLITE_ERROR, exception.getMessage(), path);
     private boolean handleException(Exception exception, Operation operation, Database database) {
         if (exception instanceof SQLiteCantOpenDatabaseException) {
             operation.error(Constant.SQLITE_ERROR, Constant.ERROR_OPEN_FAILED + " " + database.path, null);
             return true;
-        } else if (exception instanceof SQLException) {
+        } else if (exception instanceof android.database.SQLException) {
             operation.error(Constant.SQLITE_ERROR, exception.getMessage(), SqlErrorInfo.getMap(operation));
             return true;
         }
         operation.error(Constant.SQLITE_ERROR, exception.getMessage(), SqlErrorInfo.getMap(operation));
         return true;
 
-    private boolean handleException(SQLException exception, Result result, Database database) {
-        return handleException(exception, result, database.path);
-    }
-
-    private boolean handleException(SQLException exception, OperationResult result, Database database) {
-        result.error(Constant.SQLITE_ERROR, exception.getMessage(), database.path);
-        return true;
     }
 
     //
