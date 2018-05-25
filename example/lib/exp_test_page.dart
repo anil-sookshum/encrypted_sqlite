@@ -261,7 +261,7 @@ class ExpTestPage extends TestPage {
       // devPrint("issue #48");
       // Try to query on a non-indexed field
       String path = await initDeleteDb("exp_issue_48.db");
-      Database db = await openDatabase(path, version: 1,
+      Database db = await openDatabase(path, 'password', version: 1,
           onCreate: (Database db, int version) async {
         await db
             .execute("CREATE TABLE npa (id INT, title TEXT, identifier TEXT)");
@@ -291,7 +291,7 @@ class ExpTestPage extends TestPage {
       // Sqflite.devSetDebugModeOn(true);
       // Try to insert string with quote
       String path = await initDeleteDb("exp_issue_52.db");
-      Database db = await openDatabase(path, version: 1,
+      Database db = await openDatabase(path, 'password', version: 1,
           onCreate: (Database db, int version) async {
         await db.execute("CREATE TABLE test (id INT, value TEXT)");
         await db.insert("test", {"id": 1, "value": 'without quote'});

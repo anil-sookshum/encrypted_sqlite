@@ -170,7 +170,7 @@ class TypeTestPage extends TestPage {
     test("date_time", () async {
       // await Sqflite.devSetDebugModeOn(true);
       String path = await initDeleteDb("type_date_time.db");
-      data.db = await openDatabase(path, version: 1,
+      data.db = await openDatabase(path, 'password', version: 1,
           onCreate: (Database db, int version) async {
         await db
             .execute("CREATE TABLE Test (_id INTEGER PRIMARY KEY, value TEXT)");

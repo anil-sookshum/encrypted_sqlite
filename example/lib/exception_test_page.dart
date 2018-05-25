@@ -137,7 +137,7 @@ class ExceptionTestPage extends TestPage {
       // await Sqflite.devSetDebugModeOn(true);
       String path = await initDeleteDb("constraint_exception.db");
       Database db =
-          await openDatabase(path, version: 1, onCreate: (db, version) {
+          await openDatabase(path, 'password', version: 1, onCreate: (db, version) {
         db.execute("CREATE TABLE Test (name TEXT UNIQUE)");
       });
       await db.insert("Test", {"name": "test1"});
@@ -159,7 +159,7 @@ class ExceptionTestPage extends TestPage {
       // await Sqflite.devSetDebugModeOn(true);
       String path = await initDeleteDb("constraint_primary_key_exception.db");
       Database db =
-          await openDatabase(path, version: 1, onCreate: (db, version) {
+          await openDatabase(path, 'password', version: 1, onCreate: (db, version) {
         db.execute("CREATE TABLE Test (name TEXT PRIMARY KEY)");
       });
       await db.insert("Test", {"name": "test1"});
@@ -180,7 +180,7 @@ class ExceptionTestPage extends TestPage {
     test("Sqlite batch Exception", () async {
       // await Sqflite.devSetDebugModeOn(true);
       String path = await initDeleteDb("batch_exception.db");
-      Database db = await openDatabase(path);
+      Database db = await openDatabase(path, 'password');
 
       // Query
       try {
@@ -358,7 +358,7 @@ class ExceptionTestPage extends TestPage {
       if (!Platform.isIOS) {
         // await Sqflite.devSetDebugModeOn(true);
         String path = await initDeleteDb("bind_no_arg_failed.db");
-        Database db = await openDatabase(path);
+        Database db = await openDatabase(path, 'password');
 
         await db.execute("CREATE TABLE Test (name TEXT)");
 
@@ -378,7 +378,7 @@ class ExceptionTestPage extends TestPage {
         //if (true) {
         // await Sqflite.devSetDebugModeOn(true);
         String path = await initDeleteDb("bind_no_arg_failed.db");
-        Database db = await openDatabase(path);
+        Database db = await openDatabase(path, 'password');
 
         await db.execute("CREATE TABLE Test (name TEXT)");
 
@@ -393,7 +393,7 @@ class ExceptionTestPage extends TestPage {
     test("Bind null argument", () async {
       // await Sqflite.devSetDebugModeOn(true);
       String path = await initDeleteDb("bind_null_failed.db");
-      Database db = await openDatabase(path);
+      Database db = await openDatabase(path, 'password');
 
       await db.execute("CREATE TABLE Test (name TEXT)");
 
@@ -425,7 +425,7 @@ class ExceptionTestPage extends TestPage {
     test("Bind no parameter", () async {
       // await Sqflite.devSetDebugModeOn(true);
       String path = await initDeleteDb("bind_no_parameter_failed.db");
-      Database db = await openDatabase(path);
+      Database db = await openDatabase(path, 'password');
 
       await db.execute("CREATE TABLE Test (name TEXT)");
 
