@@ -1,3 +1,23 @@
+## 0.11.0
+
+* add `getDatabasesPath` to use as the base location to create a database
+* Warning: database are now single instance by default (based on `path`), to use the 
+  old behavior use `singleInstance = false` when opening a database
+* dart2 stable support
+  
+## 0.10.0
+
+* Preparing for 1.0
+* Remove deprecated methods (re-entrant transactions)
+* Add `Transaction.batch`
+* Show developer warning to prevent deadlock
+
+## 0.9.0
+
+* Support for in-memory database (`:memory:` path)
+* Support for single instance
+* new database factory for handling the new options
+
 ## 0.8.9
 
 * Upgrade to sdk 27

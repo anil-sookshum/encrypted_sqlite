@@ -1,54 +1,29 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
-import 'package:path/path.dart';
-import 'package:func/func.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:sqflite_example/src/common_import.dart';
 import 'model/item.dart';
 import 'model/test.dart';
 import 'src/item_widget.dart';
+export 'package:sqflite_example/database/database.dart';
 
 class TestPage extends StatefulWidget {
-  // return the path
-  Future<String> initDeleteDb(String dbName) async {
-    var documentsDirectory = await getApplicationDocumentsDirectory();
-    var path = join(documentsDirectory.path, dbName);
-
-    print(documentsDirectory);
-
-    // make sure the folder exists
-    if (await new Directory(dirname(path)).exists()) {
-      await deleteDatabase(path);
-    } else {
-      try {
-        await new Directory(dirname(path)).create(recursive: true);
-      } catch (e) {
-        if (!await new Directory(dirname(path)).exists()) {
-          print(e);
-        }
-      }
-    }
-    return path;
-  }
-
   final String title;
   final List<Test> tests = [];
 
-  test(String name, Func0<FutureOr> fn) {
+  test(String name, FutureOr fn()) {
     tests.add(new Test(name, fn));
   }
 
   @Deprecated("SOLO_TEST - On purpose to remove before checkin")
-  void solo_test(String name, Func0<FutureOr> fn) {
+  void solo_test(String name, FutureOr fn()) {
     tests.add(new Test(name, fn, solo: true));
   }
 
   @Deprecated("SKIP_TEST - On purpose to remove before checkin")
-  void skip_test(String name, Func0<FutureOr> fn) {
+  void skip_test(String name, FutureOr fn()) {
     tests.add(new Test(name, fn, skip: true));
   }
 

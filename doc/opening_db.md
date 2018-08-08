@@ -2,12 +2,12 @@
 
 ## finding a location path for the database
 
-Sqflite does not provide any location strategy. Currently the way it is mostly used is using
-the `path_provider` plugin to find a location to write the sqlite database file
+Sqflite provides a basic location strategy using the databases path on Android and the Documents folder on iOS, as
+recommended on both platform. The location can be retrieved using `getDatabasesPath`.
 
 ```dart
-var documentsDirectory = await getApplicationDocumentsDirectory();
-var path = join(documentsDirectory.path, dbName);
+var databasesPath = await getDatabasesPath();
+var path = join(databasesPath, dbName);
 
 // Make sure the directory exists
 try {
@@ -36,6 +36,28 @@ var db = await openDatabase(path, onConfigure: _onConfigure);
 
 ```
 
+### Preloading data
+
+You might want to preload you database when opened the first time. You can either
+* [Import an existing SQLite file](opening_asset_db.md) checking first whether the database file exists or not
+* Populate data during `onCreate`:
+
+
+```dart
+_onCreate(Database db, int version) async {
+  // Database is created, create the table
+  await db.execute(
+    "CREATE TABLE Test (id INTEGER PRIMARY KEY, value TEXT)");
+  }
+  // populate data
+  await db.insert(...);
+}
+
+// Open the database, specifying a version and an onCreate callback
+var db = await openDatabase(path,
+    version: 1,
+    onCreate: _onCreate);
+```
 ### Migration
 
 `onCreate`, `onUpdate`, `onDowngrade` is called if a `version` is specified. If the database does 
@@ -49,22 +71,22 @@ These 3 callbacks are called within a transaction just before the version is set
 
 ```dart
 _onCreate(Database db, int version) async {
-  // Database is created, delete the table
+  // Database is created, create the table
   await db.execute(
     "CREATE TABLE Test (id INTEGER PRIMARY KEY, value TEXT)");
-  }
+}
 
-  _onUpgrade(Database db, int oldVersion, int newVersion) async {
-    // Database version is updated, alter the table
-    await db.execute("ALTER TABLE Test ADD name TEXT");
-  }
+_onUpgrade(Database db, int oldVersion, int newVersion) async {
+  // Database version is updated, alter the table
+  await db.execute("ALTER TABLE Test ADD name TEXT");
+}
 
-  // Special callback used for onDowngrade here to recreate the database
-  var db = await openDatabase(path,
-    version: 1,
-    onCreate: _onCreate,
-    onUpgrade: _onUpgrade,
-    onDowngrade: onDatabaseDowngradeDelete);
+// Special callback used for onDowngrade here to recreate the database
+var db = await openDatabase(path,
+  version: 1,
+  onCreate: _onCreate,
+  onUpgrade: _onUpgrade,
+  onDowngrade: onDatabaseDowngradeDelete);
 ```
 
 ### Post open callback

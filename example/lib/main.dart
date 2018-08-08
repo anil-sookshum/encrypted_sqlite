@@ -84,8 +84,8 @@ class MyHomePage extends StatefulWidget {
         route: testExpRoute));
     items.add(new MainItem("Exception tests", "Tests that trigger exceptions",
         route: testExceptionRoute));
-    items.add(new MainItem(
-        "Deprecated test", "Currently keep old synchronized functionality",
+    items.add(new MainItem("Deprecated test",
+        "Keeping some old tests for deprecated functionalities",
         route: testDeprecatedRoute));
 
     // Uncomment to view all logs

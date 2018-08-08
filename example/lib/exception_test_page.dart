@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -20,8 +21,8 @@ class ExceptionTestPage extends TestPage {
       try {
         await db.transaction((txn) async {
           await txn.rawInsert("INSERT INTO Test (name) VALUES (?)", ["item"]);
-          int afterCount = Sqflite
-              .firstIntValue(await txn.rawQuery("SELECT COUNT(*) FROM Test"));
+          int afterCount = Sqflite.firstIntValue(
+              await txn.rawQuery("SELECT COUNT(*) FROM Test"));
           expect(afterCount, 1);
 
           hasFailed = true;
@@ -55,7 +56,7 @@ class ExceptionTestPage extends TestPage {
 
       bool hasFailed = true;
       try {
-        await batch.apply();
+        await batch.commit();
         hasFailed = false;
       } on DatabaseException catch (e) {
         print("native_error: $e");
@@ -111,7 +112,7 @@ class ExceptionTestPage extends TestPage {
       } on Exception catch (e) {
         //verify(e.isSyntaxError());
         print(e);
-        verify(e.toString().contains("sql 'DUMMY'"));
+        verify(e.toString().contains("DUMMY"));
       }
 
       try {
@@ -119,7 +120,7 @@ class ExceptionTestPage extends TestPage {
         fail(); // should fail before
       } on DatabaseException catch (e) {
         verify(e.isSyntaxError());
-        verify(e.toString().contains("sql 'DUMMY'"));
+        verify(e.toString().contains("DUMMY"));
       }
 
       try {
@@ -127,7 +128,7 @@ class ExceptionTestPage extends TestPage {
         fail(); // should fail before
       } on DatabaseException catch (e) {
         verify(e.isSyntaxError());
-        verify(e.toString().contains("sql 'DUMMY'"));
+        verify(e.toString().contains("DUMMY"));
       }
 
       await db.close();
@@ -453,6 +454,31 @@ class ExceptionTestPage extends TestPage {
         expect(e.toString().contains("sql 'DELETE FROM Test"), true);
       }
 
+      await db.close();
+    });
+
+    // Using the db object in a transaction lead to a deadlock...
+    test("Dead lock", () async {
+      String path = await initDeleteDb("dead_lock.db");
+      Database db = await openDatabase(path);
+
+      bool hasTimedOut = false;
+      int callbackCount = 0;
+      Sqflite.setLockWarningInfo(
+          duration: new Duration(milliseconds: 200),
+          callback: () {
+            callbackCount++;
+          });
+      try {
+        await db.transaction((txn) async {
+          await db.getVersion();
+          fail("should fail");
+        }).timeout(new Duration(milliseconds: 1500));
+      } on TimeoutException catch (_) {
+        hasTimedOut = true;
+      }
+      expect(hasTimedOut, true);
+      expect(callbackCount, 1);
       await db.close();
     });
   }

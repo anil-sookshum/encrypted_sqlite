@@ -1,3 +1,7 @@
+import 'dart:io';
+
+import 'package:flutter/services.dart';
+import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 
 import 'test_page.dart';
@@ -7,40 +11,23 @@ final String columnId = "_id";
 final String columnTitle = "title";
 final String columnDone = "done";
 
-const String password = 'password';
-
 class ExpTestPage extends TestPage {
   ExpTestPage() : super("Exp Tests") {
-    test("bad password", () async {
-      String exception = '';
-      try {
-        String path = await initDeleteDb("bad_password.db");
-        Database db = await openDatabase(path, password, version: 1, onCreate: (Database db, int version) async {
-          await db.execute("CREATE TABLE Test (_id INTEGER PRIMARY KEY, value REAL)");
-        });
-        await db.close();
-
-        db = await openDatabase(path, "bad password");
-        await db.insert("Test", {"value": -1.1});
-      } catch (e) {
-        print('The exception is: $e');
-        exception = e.toString();
-      }
-
-      expect(exception.contains(new RegExp('file is not a database|file is encrypted')), true);
-    });
-
     test("order_by", () async {
       //await Sqflite.setDebugModeOn(true);
       String path = await initDeleteDb("order_by_exp.db");
-      Database db = await openDatabase(path, password);
+      Database db = await openDatabase(path);
 
       String table = "test";
-      await db.execute("CREATE TABLE $table (column_1 INTEGER, column_2 INTEGER)");
+      await db
+          .execute("CREATE TABLE $table (column_1 INTEGER, column_2 INTEGER)");
       // inserted in a wrong order to check ASC/DESC
-      await db.execute("INSERT INTO $table (column_1, column_2) VALUES (11, 180)");
-      await db.execute("INSERT INTO $table (column_1, column_2) VALUES (10, 180)");
-      await db.execute("INSERT INTO $table (column_1, column_2) VALUES (10, 2000)");
+      await db
+          .execute("INSERT INTO $table (column_1, column_2) VALUES (11, 180)");
+      await db
+          .execute("INSERT INTO $table (column_1, column_2) VALUES (10, 180)");
+      await db
+          .execute("INSERT INTO $table (column_1, column_2) VALUES (10, 2000)");
 
       var expectedResult = [
         {"column_1": 10, "column_2": 2000},
@@ -48,7 +35,8 @@ class ExpTestPage extends TestPage {
         {"column_1": 11, "column_2": 180}
       ];
 
-      var result = await db.rawQuery("SELECT * FROM $table ORDER BY column_1 ASC, column_2 DESC");
+      var result = await db.rawQuery(
+          "SELECT * FROM $table ORDER BY column_1 ASC, column_2 DESC");
       //print(JSON.encode(result));
       expect(result, expectedResult);
       result = await db.query(table, orderBy: "column_1 ASC, column_2 DESC");
@@ -60,14 +48,19 @@ class ExpTestPage extends TestPage {
     test("in", () async {
       //await Sqflite.devSetDebugModeOn(true);
       String path = await initDeleteDb("simple_exp.db");
-      Database db = await openDatabase(path, password);
+      Database db = await openDatabase(path);
 
       String table = "test";
-      await db.execute("CREATE TABLE $table (column_1 INTEGER, column_2 INTEGER)");
-      await db.execute("INSERT INTO $table (column_1, column_2) VALUES (1, 1001)");
-      await db.execute("INSERT INTO $table (column_1, column_2) VALUES (2, 1002)");
-      await db.execute("INSERT INTO $table (column_1, column_2) VALUES (2, 1012)");
-      await db.execute("INSERT INTO $table (column_1, column_2) VALUES (3, 1003)");
+      await db
+          .execute("CREATE TABLE $table (column_1 INTEGER, column_2 INTEGER)");
+      await db
+          .execute("INSERT INTO $table (column_1, column_2) VALUES (1, 1001)");
+      await db
+          .execute("INSERT INTO $table (column_1, column_2) VALUES (2, 1002)");
+      await db
+          .execute("INSERT INTO $table (column_1, column_2) VALUES (2, 1012)");
+      await db
+          .execute("INSERT INTO $table (column_1, column_2) VALUES (3, 1003)");
 
       var expectedResult = [
         {"column_1": 1, "column_2": 1001},
@@ -76,12 +69,16 @@ class ExpTestPage extends TestPage {
       ];
 
       // testing with value in the In clause
-      var result = await db.query(table, where: "column_1 IN (1, 2)", orderBy: "column_1 ASC, column_2 ASC");
+      var result = await db.query(table,
+          where: "column_1 IN (1, 2)", orderBy: "column_1 ASC, column_2 ASC");
       //print(JSON.encode(result));
       expect(result, expectedResult);
 
       // testing with value as arguments
-      result = await db.query(table, where: "column_1 IN (?, ?)", whereArgs: ["1", "2"], orderBy: "column_1 ASC, column_2 ASC");
+      result = await db.query(table,
+          where: "column_1 IN (?, ?)",
+          whereArgs: ["1", "2"],
+          orderBy: "column_1 ASC, column_2 ASC");
       expect(result, expectedResult);
 
       await db.close();
@@ -90,7 +87,7 @@ class ExpTestPage extends TestPage {
     test("Raw escaping", () async {
       //await Sqflite.devSetDebugModeOn(true);
       String path = await initDeleteDb("raw_escaping_fields.db");
-      Database db = await openDatabase(path, password);
+      Database db = await openDatabase(path);
 
       String table = "table";
       await db.execute('CREATE TABLE "$table" ("group" INTEGER)');
@@ -101,10 +98,12 @@ class ExpTestPage extends TestPage {
         {"group": 1}
       ];
 
-      var result = await db.rawQuery('SELECT "group" FROM "$table" ORDER BY "group" DESC');
+      var result = await db
+          .rawQuery('SELECT "group" FROM "$table" ORDER BY "group" DESC');
       print(result);
       expect(result, expectedResult);
-      result = await db.rawQuery("SELECT * FROM '$table' ORDER BY `group` DESC");
+      result =
+          await db.rawQuery("SELECT * FROM '$table' ORDER BY `group` DESC");
       //print(JSON.encode(result));
       expect(result, expectedResult);
 
@@ -116,20 +115,22 @@ class ExpTestPage extends TestPage {
     test("Escaping fields", () async {
       //await Sqflite.devSetDebugModeOn(true);
       String path = await initDeleteDb("escaping_fields.db");
-      Database db = await openDatabase(path, password);
+      Database db = await openDatabase(path);
 
       String table = "group";
       await db.execute('CREATE TABLE "$table" ("group" TEXT)');
       // inserted in a wrong order to check ASC/DESC
 
       await db.insert(table, {"group": "group_value"});
-      await db.update(table, {"group": "group_new_value"}, where: "\"group\" = 'group_value'");
+      await db.update(table, {"group": "group_new_value"},
+          where: "\"group\" = 'group_value'");
 
       var expectedResult = [
         {"group": "group_new_value"}
       ];
 
-      var result = await db.query(table, columns: ["group"], orderBy: '"group" DESC');
+      var result =
+          await db.query(table, columns: ["group"], orderBy: '"group" DESC');
       //print(JSON.encode(result));
       expect(result, expectedResult);
 
@@ -141,7 +142,7 @@ class ExpTestPage extends TestPage {
     test("Functions", () async {
       //await Sqflite.devSetDebugModeOn(true);
       String path = await initDeleteDb("exp_functions.db");
-      Database db = await openDatabase(path, password);
+      Database db = await openDatabase(path);
 
       String table = "functions";
       await db.execute('CREATE TABLE "$table" (one TEXT, another TEXT)');
@@ -186,48 +187,58 @@ class ExpTestPage extends TestPage {
     test("Alias", () async {
       //await Sqflite.devSetDebugModeOn(true);
       String path = await initDeleteDb("exp_alias.db");
-      Database db = await openDatabase(path, password);
+      Database db = await openDatabase(path);
 
-      String table = "alias";
-      await db.execute("CREATE TABLE $table (column_1 INTEGER, column_2 INTEGER)");
-      await db.insert(table, {"column_1": 1, "column_2": 2});
+      try {
+        String table = "alias";
+        await db.execute(
+            "CREATE TABLE $table (column_1 INTEGER, column_2 INTEGER)");
+        await db.insert(table, {"column_1": 1, "column_2": 2});
 
-      var result = await db.rawQuery('''
+        var result = await db.rawQuery('''
       select t.column_1, t.column_1 as "t.column1", column_1 as column_alias_1, column_2
       from $table as t''');
-      print('result :$result');
-      expect(result, [
-        {"t.column1": 1, "column_1": 1, "column_alias_1": 1, "column_2": 2}
-      ]);
+        print('result :$result');
+        expect(result, [
+          {"t.column1": 1, "column_1": 1, "column_alias_1": 1, "column_2": 2}
+        ]);
+      } finally {
+        await db.close();
+      }
     });
 
     test("Dart2 query", () async {
       // await Sqflite.devSetDebugModeOn(true);
-      String path = await initDeleteDb("exp_alias.db");
-      Database db = await openDatabase(path, password);
+      String path = await initDeleteDb("exp_dart2_query.db");
+      Database db = await openDatabase(path);
 
-      String table = "test";
-      await db.execute("CREATE TABLE $table (column_1 INTEGER, column_2 INTEGER)");
-      await db.insert(table, {"column_1": 1, "column_2": 2});
+      try {
+        String table = "test";
+        await db.execute(
+            "CREATE TABLE $table (column_1 INTEGER, column_2 INTEGER)");
+        await db.insert(table, {"column_1": 1, "column_2": 2});
 
-      var result = await db.rawQuery('''
+        var result = await db.rawQuery('''
          select column_1, column_2
          from $table as t
       ''');
-      print('result: $result');
-      // test output types
-      print('result.first: ${result.first}');
-      Map<String, dynamic> first = result.first;
-      print('result.first.keys: ${first.keys}');
-      Iterable<String> keys = result.first.keys;
-      Iterable values = result.first.values;
-      verify(keys.first == "column_1" || keys.first == "column_2");
-      verify(values.first == 1 || values.first == 2);
-      print('result.last.keys: ${result.last.keys}');
-      keys = result.last.keys;
-      values = result.last.values;
-      verify(keys.last == "column_1" || keys.last == "column_2");
-      verify(values.last == 1 || values.last == 2);
+        print('result: $result');
+        // test output types
+        print('result.first: ${result.first}');
+        Map<String, dynamic> first = result.first;
+        print('result.first.keys: ${first.keys}');
+        Iterable<String> keys = result.first.keys;
+        Iterable values = result.first.values;
+        verify(keys.first == "column_1" || keys.first == "column_2");
+        verify(values.first == 1 || values.first == 2);
+        print('result.last.keys: ${result.last.keys}');
+        keys = result.last.keys;
+        values = result.last.values;
+        verify(keys.last == "column_1" || keys.last == "column_2");
+        verify(values.last == 1 || values.last == 2);
+      } finally {
+        await db.close();
+      }
     });
     /*
 
@@ -261,7 +272,7 @@ class ExpTestPage extends TestPage {
       // devPrint("issue #48");
       // Try to query on a non-indexed field
       String path = await initDeleteDb("exp_issue_48.db");
-      Database db = await openDatabase(path, 'password', version: 1,
+      Database db = await openDatabase(path, version: 1,
           onCreate: (Database db, int version) async {
         await db
             .execute("CREATE TABLE npa (id INT, title TEXT, identifier TEXT)");
@@ -291,7 +302,7 @@ class ExpTestPage extends TestPage {
       // Sqflite.devSetDebugModeOn(true);
       // Try to insert string with quote
       String path = await initDeleteDb("exp_issue_52.db");
-      Database db = await openDatabase(path, 'password', version: 1,
+      Database db = await openDatabase(path, version: 1,
           onCreate: (Database db, int version) async {
         await db.execute("CREATE TABLE test (id INT, value TEXT)");
         await db.insert("test", {"id": 1, "value": 'without quote'});
@@ -306,6 +317,48 @@ class ExpTestPage extends TestPage {
           .rawQuery('SELECT * FROM test WHERE value = ?', ['with " quote']);
       expect(resultSet.length, 1);
       expect(resultSet.first['id'], 2);
+      await db.close();
+    });
+
+    test("Issue#64", () async {
+      // await Sqflite.devSetDebugModeOn(true);
+      String path = await initDeleteDb("issue_64.db");
+
+      // delete existing if any
+      await deleteDatabase(path);
+
+      // Copy from asset
+      var data = await rootBundle.load(join("assets", "issue_64.db"));
+      var bytes =
+          data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
+      await new File(path).writeAsBytes(bytes);
+
+      // open the database
+      Database db = await openDatabase(path);
+
+      var result = await db.query('recordings',
+          columns: ['id', 'content', 'file', 'speaker', 'reference']);
+      print('result1: $result');
+      expect(result.length, 2);
+
+      // This one does not work
+      // to investigate
+      result = await db.query('recordings',
+          columns: ['id', 'content', 'file', 'speaker', 'reference'],
+          where: 'speaker = ?',
+          whereArgs: [1]);
+
+      print('result2: $result');
+      expect(result.length, 2);
+
+      result = await db.query(
+        'recordings',
+        columns: ['id', 'content', 'file', 'speaker', 'reference'],
+        where: 'speaker = 1',
+      );
+      print('result3: $result');
+      expect(result.length, 2);
+
       await db.close();
     });
   }

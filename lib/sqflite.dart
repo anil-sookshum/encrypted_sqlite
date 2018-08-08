@@ -1,15 +1,20 @@
 import 'dart:async';
-import 'dart:io';
+//import 'dart:io';
 
 import 'package:sqflite/src/constant.dart';
 import 'package:sqflite/src/database.dart' as impl;
+import 'package:sqflite/src/database_factory.dart' as impl;
 import 'package:sqflite/src/sqflite_impl.dart';
+import 'package:sqflite/src/sqflite_impl.dart' as impl;
 import 'package:sqflite/src/sql_builder.dart';
+import 'package:sqflite/src/database_factory.dart' show databaseFactory;
 
 import 'src/utils.dart';
 
 export 'sql.dart' show ConflictAlgorithm;
 export 'src/exception.dart' show DatabaseException;
+export 'src/database_factory.dart' show DatabaseFactory, databaseFactory;
+export 'src/constant.dart' show inMemoryDatabasePath;
 
 ///
 /// internal options
@@ -18,11 +23,11 @@ class SqfliteOptions {
   // true =<0.7.0
   bool queryAsMapList;
 
-  Map toMap() {
-    return {'queryAsMapList': queryAsMapList};
+  Map<String, dynamic> toMap() {
+    return <String, dynamic>{'queryAsMapList': queryAsMapList};
   }
 
-  fromMap(Map map) {
+  void fromMap(Map<String, dynamic> map) {
     queryAsMapList = map['queryAsMapList'] as bool;
   }
 }
@@ -40,7 +45,7 @@ class Sqflite {
   /// turn on debug mode if you want to see the SQL query
   /// executed natively
   static Future setDebugModeOn([bool on = true]) async {
-    await invokeMethod(methodSetDebugModeOn, on);
+    await invokeMethod<dynamic>(methodSetDebugModeOn, on);
   }
 
   static Future<bool> getDebugModeOn() async {
@@ -57,13 +62,13 @@ class Sqflite {
   // Testing only
   @deprecated
   static Future devSetOptions(SqfliteOptions options) async {
-    await invokeMethod(methodOptions, options.toMap());
+    await invokeMethod<dynamic>(methodOptions, options.toMap());
   }
 
   // Testing only
   @deprecated
   static Future devInvokeMethod(String method, [dynamic arguments]) async {
-    await invokeMethod(method, arguments);
+    await invokeMethod<dynamic>(method, arguments);
   }
 
   /// helper to get the first int value in a query
@@ -73,6 +78,12 @@ class Sqflite {
       return parseInt(list.first?.values?.first);
     }
     return null;
+  }
+
+  /// Sqlite has a dead lock warning feature that will print some text
+  /// after 10s, you can override the default behavior
+  static void setLockWarningInfo({Duration duration, void callback()}) {
+    impl.setLockWarningInfo(duration: duration, callback: callback);
   }
 }
 
@@ -170,7 +181,17 @@ abstract class DatabaseExecutor {
   /// the count of item changed is not returned
   ///
   /// If called on a database a transaction is created
+  @Deprecated("User batch.commit() instead")
   Future<List<dynamic>> applyBatch(Batch batch, {bool noResult});
+
+  /// Creates a batch, used for performing multiple operation
+  /// in a single atomic operation.
+  ///
+  /// a batch can be commited using [Batch.commit]
+  ///
+  /// If the batch was created in a transaction, it will be commited
+  /// when the transaction is done
+  Batch batch();
 }
 
 /// Database transaction
@@ -184,32 +205,12 @@ abstract class Database implements DatabaseExecutor {
   /// The path of the database
   String get path;
 
-  String get password;
-
   /// Close the database. Cannot be access anymore
   Future close();
-
-  ///
-  /// synchronized call to the database
-  /// ensure that no other calls outside the inner action will
-  /// access the database
-  /// Use [Zone] so should be deprecated soon starting 0.8.1
-  // Deprecated since 2018-03-01 - 0.8.1
-  @deprecated
-  Future<T> synchronized<T>(Future<T> action());
 
   /// Calls in action must only be done using the transaction object
   /// using the database will trigger a dead-lock
   Future<T> transaction<T>(Future<T> action(Transaction txn), {bool exclusive});
-
-  ///
-  /// Simple soon to be deprecated soon starting 0.8.1
-  /// (it uses Zone in order to be re-entrant) transaction mechanism
-  ///
-  // User [transaction] instead
-  // Deprecated since 2018-03-01 - 0.8.1
-  @deprecated
-  Future<T> inTransaction<T>(Future<T> action(), {bool exclusive});
 
   ///
   /// Get the database inner version
@@ -224,19 +225,11 @@ abstract class Database implements DatabaseExecutor {
 
   /// testing only
   @deprecated
-  Future devInvokeMethod(String method, [dynamic arguments]);
+  Future<T> devInvokeMethod<T>(String method, [dynamic arguments]);
 
   /// testing only
   @deprecated
-  Future devInvokeSqlMethod(String method, String sql, [List arguments]);
-
-  /// Creates a batch, used for performing multiple operation
-  /// in a single atomic operation.
-  ///
-  /// a batch can be commited using [Batch.commit] if you are not in
-  /// a transaction. You can create within a transaction
-  /// however call [Transaction.applyBatch] to run the batch
-  Batch batch();
+  Future<T> devInvokeSqlMethod<T>(String method, String sql, [List arguments]);
 }
 
 typedef FutureOr OnDatabaseVersionChangeFn(
@@ -262,6 +255,41 @@ final OnDatabaseVersionChangeFn onDatabaseDowngradeDelete =
     __onDatabaseDowngradeDelete;
 
 ///
+/// Options for opening the database
+/// see [openDatabase] for details
+///
+abstract class OpenDatabaseOptions {
+  factory OpenDatabaseOptions(
+      {int version,
+      OnDatabaseConfigureFn onConfigure,
+      OnDatabaseCreateFn onCreate,
+      OnDatabaseVersionChangeFn onUpgrade,
+      OnDatabaseVersionChangeFn onDowngrade,
+      OnDatabaseOpenFn onOpen,
+      bool readOnly = false,
+      bool singleInstance = true}) {
+    return new impl.SqfliteOpenDatabaseOptions(
+        version: version,
+        onConfigure: onConfigure,
+        onCreate: onCreate,
+        onUpgrade: onUpgrade,
+        onDowngrade: onDowngrade,
+        onOpen: onOpen,
+        readOnly: readOnly,
+        singleInstance: singleInstance);
+  }
+
+  int version;
+  OnDatabaseConfigureFn onConfigure;
+  OnDatabaseCreateFn onCreate;
+  OnDatabaseVersionChangeFn onUpgrade;
+  OnDatabaseVersionChangeFn onDowngrade;
+  OnDatabaseOpenFn onOpen;
+  bool readOnly;
+  bool singleInstance;
+}
+
+///
 /// Open the database at a given path
 /// setting a version is optional
 /// [onCreate],  [onUpgrade], [onDowngrade] are called in a transaction
@@ -272,38 +300,52 @@ final OnDatabaseVersionChangeFn onDatabaseDowngradeDelete =
 ///
 /// [onOpen] is called after [onCreate], [onUpgrade], [onDowngrade] are called
 ///
-Future<Database> openDatabase(String path, String password,
-        {int version,
-        OnDatabaseConfigureFn onConfigure,
-        OnDatabaseCreateFn onCreate,
-        OnDatabaseVersionChangeFn onUpgrade,
-        OnDatabaseVersionChangeFn onDowngrade,
-        OnDatabaseOpenFn onOpen}) =>
-    impl.openDatabase(path, password,
-        version: version,
-        onConfigure: onConfigure,
-        onCreate: onCreate,
-        onUpgrade: onUpgrade,
-        onDowngrade: onDowngrade,
-        onOpen: onOpen);
+/// When [readOnly] is true all other parameters are ignored and the database
+/// is opened as is
+///
+/// When [singleInstance] is true (the default), a single database instance is
+/// returned for a given path and other options are ignore if you call
+/// openDatabase again if the database is already opened
+///
+Future<Database> openDatabase(String path,
+    {int version,
+    OnDatabaseConfigureFn onConfigure,
+    OnDatabaseCreateFn onCreate,
+    OnDatabaseVersionChangeFn onUpgrade,
+    OnDatabaseVersionChangeFn onDowngrade,
+    OnDatabaseOpenFn onOpen,
+    bool readOnly = false,
+    bool singleInstance = true}) {
+  var options = new OpenDatabaseOptions(
+      version: version,
+      onConfigure: onConfigure,
+      onCreate: onCreate,
+      onUpgrade: onUpgrade,
+      onDowngrade: onDowngrade,
+      onOpen: onOpen,
+      readOnly: readOnly,
+      singleInstance: singleInstance);
+  return databaseFactory.openDatabase(path, options: options);
+}
 
 ///
 /// Open the database at a given path in read only mode
 ///
-Future<Database> openReadOnlyDatabase(String path, String password) =>
-    impl.openReadOnlyDatabase(path, password);
+Future<Database> openReadOnlyDatabase(String path) =>
+    openDatabase(path, readOnly: true);
+
+///
+/// Get the default databases location
+///
+/// on Android, it is typically data/data/<package_name>/databases
+/// on iOS, it is the Documents directory
+///
+Future<String> getDatabasesPath() => databaseFactory.getDatabasesPath();
 
 ///
 /// delete the database at the given path
 ///
-Future deleteDatabase(String path) async {
-  try {
-    await new File(path).delete(recursive: true);
-  } catch (_e) {
-    // 0.8.4
-    // print(e);
-  }
-}
+Future deleteDatabase(String path) => databaseFactory.deleteDatabase(path);
 
 ///
 /// A batch is used to perform multiple operation as a single atomic unit.
@@ -317,15 +359,14 @@ abstract class Batch {
   /// if [noResult] is true, the result list is empty (i.e. the id inserted
   /// the count of item changed is not returned
   ///
-  /// Don't use this if you are in a transaction but use
-  /// [Transaction.applyBatch] instead
-  ///
   /// During [Database.onCreate], [Database.onUpgrade], [Database.onDowngrade]
-  /// we are already in a transaction so it will only be commited when
-  /// the transaction is commited (during open)
+  /// (we are already in a transaction) or if the batch was created in a
+  /// transaction it will only be commited when
+  /// the transaction is commited ([exclusive] is not used then)
   Future<List<dynamic>> commit({bool exclusive, bool noResult});
 
   /// See [Batch.commit], kept for compatibility...
+  @Deprecated("Use Batch.commit instead")
   Future<List<dynamic>> apply({bool exclusive, bool noResult});
 
   /// See [Database.rawInsert]
