@@ -460,7 +460,7 @@ class ExceptionTestPage extends TestPage {
     // Using the db object in a transaction lead to a deadlock...
     test("Dead lock", () async {
       String path = await initDeleteDb("dead_lock.db");
-      Database db = await openDatabase(path);
+      Database db = await openDatabase(path, 'password');
 
       bool hasTimedOut = false;
       int callbackCount = 0;

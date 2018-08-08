@@ -7,6 +7,7 @@ import 'package:sqflite/src/constant.dart';
 import 'package:sqflite/src/database.dart';
 import 'package:sqflite/src/exception.dart';
 import 'package:synchronized/synchronized.dart';
+
 import 'sqflite_impl.dart' as impl;
 
 SqfliteDatabaseFactory _databaseFactory;
@@ -16,14 +17,17 @@ DatabaseFactory get databaseFactory => sqlfliteDatabaseFactory;
 SqfliteDatabaseFactory get sqlfliteDatabaseFactory =>
     _databaseFactory ??= new SqfliteDatabaseFactory();
 
-Future<Database> openReadOnlyDatabase(String path) async {
+Future<Database> openReadOnlyDatabase(String path, String password) async {
   var options = new SqfliteOpenDatabaseOptions(readOnly: true);
-  return sqlfliteDatabaseFactory.openDatabase(path, options: options);
+  return sqlfliteDatabaseFactory.openDatabase(path, password, options: options);
 }
 
 abstract class DatabaseFactory {
-  Future<Database> openDatabase(String path, {OpenDatabaseOptions options});
+  Future<Database> openDatabase(String path, String password,
+      {OpenDatabaseOptions options});
+
   Future<String> getDatabasesPath();
+
   Future deleteDatabase(String path);
 }
 
@@ -45,6 +49,7 @@ class SqfliteOpenDatabaseOptions implements OpenDatabaseOptions {
     readOnly ??= false;
     singleInstance ??= true;
   }
+
   @override
   int version;
   @override
@@ -76,8 +81,8 @@ class SqfliteDatabaseFactory implements DatabaseFactory {
   var lock = new Lock();
 
   SqfliteDatabase newDatabase(
-          SqfliteDatabaseOpenHelper openHelper, String path) =>
-      new SqfliteDatabase(openHelper, path);
+          SqfliteDatabaseOpenHelper openHelper, String path, String password) =>
+      new SqfliteDatabase(openHelper, path, password);
 
   // internal close
   void doCloseDatabase(SqfliteDatabase database) {
@@ -95,7 +100,7 @@ class SqfliteDatabaseFactory implements DatabaseFactory {
   }
 
   @override
-  Future<Database> openDatabase(String path,
+  Future<Database> openDatabase(String path, String password,
       {OpenDatabaseOptions options}) async {
     options ??= new SqfliteOpenDatabaseOptions();
 
@@ -127,7 +132,8 @@ class SqfliteDatabaseFactory implements DatabaseFactory {
 
       bool firstOpen = databaseOpenHelper == null;
       if (firstOpen) {
-        databaseOpenHelper = new SqfliteDatabaseOpenHelper(this, path, options);
+        databaseOpenHelper =
+            new SqfliteDatabaseOpenHelper(this, path, password, options);
         setDatabaseOpenHelper(databaseOpenHelper);
       }
       try {
@@ -141,7 +147,7 @@ class SqfliteDatabaseFactory implements DatabaseFactory {
       }
     } else {
       var databaseOpenHelper =
-          new SqfliteDatabaseOpenHelper(this, path, options);
+          new SqfliteDatabaseOpenHelper(this, path, password, options);
       return await databaseOpenHelper.openDatabase();
     }
   }

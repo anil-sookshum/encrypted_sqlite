@@ -33,7 +33,7 @@ void main() {
 
     test('wrong database', () async {
       var db2 = mockDatabaseFactory.newEmptyDatabase();
-      var db = await mockDatabaseFactory.openDatabase(null,
+      var db = await mockDatabaseFactory.openDatabase(null, '',
           options: new OpenDatabaseOptions()) as MockDatabase;
 
       var batch = db2.batch();
@@ -52,7 +52,7 @@ void main() {
     });
   });
   test('simple', () async {
-    var db = await mockDatabaseFactory.openDatabase(null) as MockDatabase;
+    var db = await mockDatabaseFactory.openDatabase(null, 'password') as MockDatabase;
 
     var batch = db.batch();
     batch.execute("test");
@@ -84,7 +84,7 @@ void main() {
   });
 
   test('in_transaction', () async {
-    var db = await mockDatabaseFactory.openDatabase(null) as MockDatabase;
+    var db = await mockDatabaseFactory.openDatabase(null, 'password') as MockDatabase;
 
     var batch = db.batch();
 

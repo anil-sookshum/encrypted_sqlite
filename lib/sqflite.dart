@@ -1,20 +1,20 @@
 import 'dart:async';
-//import 'dart:io';
 
 import 'package:sqflite/src/constant.dart';
 import 'package:sqflite/src/database.dart' as impl;
 import 'package:sqflite/src/database_factory.dart' as impl;
+import 'package:sqflite/src/database_factory.dart' show databaseFactory;
 import 'package:sqflite/src/sqflite_impl.dart';
 import 'package:sqflite/src/sqflite_impl.dart' as impl;
 import 'package:sqflite/src/sql_builder.dart';
-import 'package:sqflite/src/database_factory.dart' show databaseFactory;
 
 import 'src/utils.dart';
 
 export 'sql.dart' show ConflictAlgorithm;
-export 'src/exception.dart' show DatabaseException;
-export 'src/database_factory.dart' show DatabaseFactory, databaseFactory;
 export 'src/constant.dart' show inMemoryDatabasePath;
+export 'src/database_factory.dart' show DatabaseFactory, databaseFactory;
+export 'src/exception.dart' show DatabaseException;
+//import 'dart:io';
 
 ///
 /// internal options
@@ -205,6 +205,8 @@ abstract class Database implements DatabaseExecutor {
   /// The path of the database
   String get path;
 
+  String get password;
+
   /// Close the database. Cannot be access anymore
   Future close();
 
@@ -307,7 +309,7 @@ abstract class OpenDatabaseOptions {
 /// returned for a given path and other options are ignore if you call
 /// openDatabase again if the database is already opened
 ///
-Future<Database> openDatabase(String path,
+Future<Database> openDatabase(String path, String password,
     {int version,
     OnDatabaseConfigureFn onConfigure,
     OnDatabaseCreateFn onCreate,
@@ -325,14 +327,14 @@ Future<Database> openDatabase(String path,
       onOpen: onOpen,
       readOnly: readOnly,
       singleInstance: singleInstance);
-  return databaseFactory.openDatabase(path, options: options);
+  return databaseFactory.openDatabase(path, password, options: options);
 }
 
 ///
 /// Open the database at a given path in read only mode
 ///
-Future<Database> openReadOnlyDatabase(String path) =>
-    openDatabase(path, readOnly: true);
+Future<Database> openReadOnlyDatabase(String path, String password) =>
+    openDatabase(path, password, readOnly: true);
 
 ///
 /// Get the default databases location

@@ -16,7 +16,7 @@ class ExpTestPage extends TestPage {
     test("order_by", () async {
       //await Sqflite.setDebugModeOn(true);
       String path = await initDeleteDb("order_by_exp.db");
-      Database db = await openDatabase(path);
+      Database db = await openDatabase(path, 'password');
 
       String table = "test";
       await db
@@ -48,7 +48,7 @@ class ExpTestPage extends TestPage {
     test("in", () async {
       //await Sqflite.devSetDebugModeOn(true);
       String path = await initDeleteDb("simple_exp.db");
-      Database db = await openDatabase(path);
+      Database db = await openDatabase(path, 'password');
 
       String table = "test";
       await db
@@ -87,7 +87,7 @@ class ExpTestPage extends TestPage {
     test("Raw escaping", () async {
       //await Sqflite.devSetDebugModeOn(true);
       String path = await initDeleteDb("raw_escaping_fields.db");
-      Database db = await openDatabase(path);
+      Database db = await openDatabase(path, 'password');
 
       String table = "table";
       await db.execute('CREATE TABLE "$table" ("group" INTEGER)');
@@ -115,7 +115,7 @@ class ExpTestPage extends TestPage {
     test("Escaping fields", () async {
       //await Sqflite.devSetDebugModeOn(true);
       String path = await initDeleteDb("escaping_fields.db");
-      Database db = await openDatabase(path);
+      Database db = await openDatabase(path, 'password');
 
       String table = "group";
       await db.execute('CREATE TABLE "$table" ("group" TEXT)');
@@ -142,7 +142,7 @@ class ExpTestPage extends TestPage {
     test("Functions", () async {
       //await Sqflite.devSetDebugModeOn(true);
       String path = await initDeleteDb("exp_functions.db");
-      Database db = await openDatabase(path);
+      Database db = await openDatabase(path, 'password');
 
       String table = "functions";
       await db.execute('CREATE TABLE "$table" (one TEXT, another TEXT)');
@@ -187,7 +187,7 @@ class ExpTestPage extends TestPage {
     test("Alias", () async {
       //await Sqflite.devSetDebugModeOn(true);
       String path = await initDeleteDb("exp_alias.db");
-      Database db = await openDatabase(path);
+      Database db = await openDatabase(path, 'password');
 
       try {
         String table = "alias";
@@ -210,7 +210,7 @@ class ExpTestPage extends TestPage {
     test("Dart2 query", () async {
       // await Sqflite.devSetDebugModeOn(true);
       String path = await initDeleteDb("exp_dart2_query.db");
-      Database db = await openDatabase(path);
+      Database db = await openDatabase(path, 'password');
 
       try {
         String table = "test";
@@ -272,7 +272,7 @@ class ExpTestPage extends TestPage {
       // devPrint("issue #48");
       // Try to query on a non-indexed field
       String path = await initDeleteDb("exp_issue_48.db");
-      Database db = await openDatabase(path, version: 1,
+      Database db = await openDatabase(path, 'password', version: 1,
           onCreate: (Database db, int version) async {
         await db
             .execute("CREATE TABLE npa (id INT, title TEXT, identifier TEXT)");
@@ -302,7 +302,7 @@ class ExpTestPage extends TestPage {
       // Sqflite.devSetDebugModeOn(true);
       // Try to insert string with quote
       String path = await initDeleteDb("exp_issue_52.db");
-      Database db = await openDatabase(path, version: 1,
+      Database db = await openDatabase(path, 'password', version: 1,
           onCreate: (Database db, int version) async {
         await db.execute("CREATE TABLE test (id INT, value TEXT)");
         await db.insert("test", {"id": 1, "value": 'without quote'});
@@ -334,7 +334,7 @@ class ExpTestPage extends TestPage {
       await new File(path).writeAsBytes(bytes);
 
       // open the database
-      Database db = await openDatabase(path);
+      Database db = await openDatabase(path, 'password');
 
       var result = await db.query('recordings',
           columns: ['id', 'content', 'file', 'speaker', 'reference']);

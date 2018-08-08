@@ -148,11 +148,14 @@ class SqfliteDatabaseOpenHelper {
   final OpenDatabaseOptions options;
   final lock = new Lock();
   final String path;
+  final String password;
   SqfliteDatabase sqfliteDatabase;
 
-  SqfliteDatabaseOpenHelper(this.factory, this.path, this.options);
+  SqfliteDatabaseOpenHelper(
+      this.factory, this.path, this.password, this.options);
 
-  SqfliteDatabase newDatabase(String path) => factory.newDatabase(this, path);
+  SqfliteDatabase newDatabase(String path, String password) =>
+      factory.newDatabase(this, path, password);
 
   bool get isOpened => sqfliteDatabase != null;
 
@@ -163,7 +166,7 @@ class SqfliteDatabaseOpenHelper {
     if (!isOpened) {
       return await lock.synchronized(() async {
         if (!isOpened) {
-          SqfliteDatabase database = newDatabase(path);
+          SqfliteDatabase database = newDatabase(path, password);
           await database.doOpen(options);
           this.sqfliteDatabase = database;
         }
@@ -193,7 +196,7 @@ class SqfliteDatabase extends SqfliteDatabaseExecutor implements Database {
   final SqfliteDatabaseOpenHelper openHelper;
   OpenDatabaseOptions options;
 
-  SqfliteDatabase(this.openHelper, this._path, {this.options});
+  SqfliteDatabase(this.openHelper, this._path, this._password, {this.options});
 
   bool get readOnly => openHelper?.options?.readOnly == true;
 
@@ -205,6 +208,10 @@ class SqfliteDatabase extends SqfliteDatabaseExecutor implements Database {
   @override
   String get path => _path;
   String _path;
+
+  @override
+  String get password => _password;
+  String _password;
 
   // only set during inTransaction to allow recursivity in transactions
   int transactionRefCount = 0;
@@ -462,7 +469,7 @@ class SqfliteDatabase extends SqfliteDatabaseExecutor implements Database {
   }
 
   Future<int> _openDatabase() {
-    var params = <String, dynamic>{paramPath: path};
+    var params = <String, dynamic>{paramPath: path, paramPassword: password};
     if (readOnly == true) {
       params[paramReadOnly] = true;
     }

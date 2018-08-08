@@ -658,7 +658,7 @@ class SimpleTestPage extends TestPage {
     test("text primary key", () async {
       // Sqflite.devSetDebugModeOn(true);
       String path = await initDeleteDb("text_primary_key.db");
-      Database db = await openDatabase(path);
+      Database db = await openDatabase(path, 'password');
       // This table has no primary key however sqlite generates an hidden row id
       await db.execute("CREATE TABLE Test (name TEXT PRIMARY KEY)");
       int id = await db.insert("Test", {"name": "test"});
@@ -687,7 +687,7 @@ class SimpleTestPage extends TestPage {
       Database db;
       try {
         String path = await initDeleteDb("without_rowid.db");
-        db = await openDatabase(path);
+        db = await openDatabase(path, 'password');
         // This table has no primary key and we ask sqlite not to generate
         // a rowid
         await db
@@ -719,7 +719,7 @@ class SimpleTestPage extends TestPage {
 
     test('Reference query', () async {
       String path = await initDeleteDb("reference_query.db");
-      Database db = await openDatabase(path);
+      Database db = await openDatabase(path, 'password');
       try {
         Batch batch = db.batch();
 
